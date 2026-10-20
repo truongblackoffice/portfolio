@@ -73,10 +73,43 @@ export default function Navbar() {
             <Link key={h} href={h} className={active(h) ? "active" : ""}>{t}</Link>
           ))}
           {user ? (
-            <>
-              <span className="muted" id="user-name" style={{ padding: "0 8px", fontSize: ".85rem" }}>{user.displayName || user.email}</span>
-              <button className="btn btn-ghost btn-sm" id="nav-logout" onClick={logout}>Đăng xuất</button>
-            </>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <Link
+                href="/profile"
+                id="nav-profile"
+                className={`btn btn-ghost btn-sm ${path === "/profile" ? "active" : ""}`}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
+                  padding: "6px 12px",
+                  borderRadius: 999,
+                }}
+                title="Quản lý thông tin cá nhân"
+              >
+                {user.photoURL ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={user.photoURL}
+                    alt="Avatar"
+                    style={{ width: 22, height: 22, borderRadius: "50%", objectFit: "cover" }}
+                  />
+                ) : (
+                  <span>👤</span>
+                )}
+                <span style={{ maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {user.displayName || user.email?.split("@")[0]}
+                </span>
+                {isAdmin ? (
+                  <span className="badge" style={{ fontSize: ".65rem", padding: "1px 5px", background: "hsla(262 90% 68% / .2)", color: "var(--primary)" }}>Admin</span>
+                ) : (
+                  <span className="badge" style={{ fontSize: ".65rem", padding: "1px 5px", background: "hsla(160 84% 39% / .2)", color: "#10b981" }}>Thành viên</span>
+                )}
+              </Link>
+              <button className="btn btn-ghost btn-sm" id="nav-logout" onClick={logout} title="Đăng xuất khỏi tài khoản">
+                Đăng xuất
+              </button>
+            </div>
           ) : (
             <Link
               href={path && path !== "/login" ? `/login?from=${encodeURIComponent(path)}` : "/login"}
