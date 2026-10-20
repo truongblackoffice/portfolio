@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import {
-  watchAuth, login, logout, listItems, saveItem, removeItem, getProfile, saveProfile,
+  watchAuth, login, logout, loginWithGoogle, authMessage, listItems, saveItem, removeItem, getProfile, saveProfile,
   uploadFile, isDemo, DEMO_EMAIL, DEMO_PASSWORD, slugify, fmtDate, roleOf, canEdit, ROLES, migrateAccess,
 } from "@/lib/db";
 import useAsync from "@/lib/useAsync";
@@ -96,20 +96,73 @@ function Login() {
   const [email, setEmail] = useState(isDemo ? DEMO_EMAIL : "");
   const [pw, setPw] = useState(isDemo ? DEMO_PASSWORD : "");
   const [err, setErr] = useState("");
+  const [busy, setBusy] = useState(false);
+
   async function submit(e) {
     e.preventDefault();
-    try { await login(email, pw); } catch (x) { setErr(x.message); }
+    setBusy(true);
+    setErr("");
+    try {
+      await login(email, pw);
+    } catch (x) {
+      setErr(authMessage(x));
+    } finally {
+      setBusy(false);
+    }
   }
+
+  async function handleGoogle() {
+    setBusy(true);
+    setErr("");
+    try {
+      await loginWithGoogle();
+    } catch (x) {
+      setErr(authMessage(x));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <div className="container section">
-      <form className="form-card glass" style={{ maxWidth: 440 }} onSubmit={submit} id="login-form">
+      <div className="form-card glass" style={{ maxWidth: 440 }}>
         <h1 style={{ marginBottom: 20 }}>Đăng nhập quản trị</h1>
         {isDemo && <div className="msg ok">Demo: {DEMO_EMAIL} / {DEMO_PASSWORD}</div>}
         {err && <div className="msg err">{err}</div>}
-        <div className="field"><label htmlFor="l-email">Email</label><input id="l-email" value={email} onChange={(e) => setEmail(e.target.value)} /></div>
-        <div className="field"><label htmlFor="l-pw">Mật khẩu</label><input id="l-pw" type="password" value={pw} onChange={(e) => setPw(e.target.value)} /></div>
-        <button className="btn btn-primary" id="login-submit" type="submit">Đăng nhập</button>
-      </form>
+
+        <button
+          type="button"
+          id="admin-google-btn"
+          className="btn btn-ghost"
+          style={{ width: "100%", justifyContent: "center", marginBottom: 20 }}
+          disabled={busy}
+          onClick={handleGoogle}
+        >
+          <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true" style={{ marginRight: 8 }}>
+            <path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.9 6.1C12.4 13.6 17.7 9.5 24 9.5z"/>
+            <path fill="#4285F4" d="M46.1 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.4c-.5 2.9-2.1 5.3-4.5 7l7.3 5.7c4.3-4 6.9-9.9 6.9-17.2z"/>
+            <path fill="#FBBC05" d="M10.5 28.7c-.5-1.4-.8-3-.8-4.7s.3-3.2.8-4.7l-7.9-6.1C.9 16.4 0 20.100 0 24s.9 7.600 2.600 10.800l7.900-6.100z"/>
+            <path fill="#34A853" d="M24 48c6.500 0 11.900-2.100 15.900-5.800l-7.300-5.700c-2 1.400-4.700 2.200-8.600 2.200-6.300 0-11.600-4.100-13.500-9.800l-7.900 6.100C6.500 42.600 14.600 48 24 48z"/>
+          </svg>
+          {busy ? "Đang xử lý..." : "Đăng nhập nhanh với Google"}
+        </button>
+
+        <div className="muted" style={{ textAlign: "center", marginBottom: 20, fontSize: ".85rem" }}>— hoặc dùng Email & Mật khẩu —</div>
+
+        <form onSubmit={submit} id="login-form">
+          <div className="field">
+            <label htmlFor="l-email">Email</label>
+            <input id="l-email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+          </div>
+          <div className="field">
+            <label htmlFor="l-pw">Mật khẩu</label>
+            <input id="l-pw" type="password" required value={pw} onChange={(e) => setPw(e.target.value)} />
+          </div>
+          <button className="btn btn-primary" id="login-submit" type="submit" disabled={busy} style={{ width: "100%", justifyContent: "center" }}>
+            {busy ? "Đang xử lý..." : "Đăng nhập"}
+          </button>
+        </form>
+      </div>
     </div>
   );
 }
