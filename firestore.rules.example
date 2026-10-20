@@ -1,0 +1,59 @@
+rules_version = '2';
+// Template: Thay admin@example.com bằng email của bạn
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function isAdmin() {
+      return signedIn() && request.auth.token.email == 'admin@example.com';
+    }
+    function me() { return get(/databases/$(database)/documents/users/$(request.auth.uid)).data; }
+    function isEditor() {
+      return isAdmin() || (signedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && me().get('role', 'member') == 'editor'
+        && me().get('disabled', false) == false);
+    }
+
+    match /profile/{id} { allow read: if true; allow write: if isAdmin(); }
+
+    match /posts/{id} {
+      allow read: if isEditor()
+        || (resource.data.published == true && (signedIn() || resource.data.membersOnly == false));
+      allow create, delete: if isEditor();
+      allow update: if isEditor()
+        || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['views']);
+    }
+    match /comments/{id} {
+      allow read: if true;
+      allow create: if request.resource.data.content is string
+                    && request.resource.data.content.size() > 0
+                    && request.resource.data.content.size() < 2000;
+      allow delete: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow update: if isAdmin();
+    }
+    match /documents/{id} {
+      allow read: if isEditor() || signedIn() || resource.data.membersOnly == false;
+      allow write: if isEditor();
+    }
+    match /categories/{id} {
+      allow read: if true;
+      allow write: if isEditor();
+    }
+    match /media/{id} {
+      allow read: if isEditor();
+      allow write: if isEditor();
+    }
+    match /messages/{id} { allow create: if true; allow read, update, delete: if isAdmin(); }
+
+    match /users/{uid} {
+      allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
+      allow create: if signedIn() && request.auth.uid == uid
+                    && request.resource.data.disabled == false
+                    && request.resource.data.role == 'member';
+      allow update: if isAdmin() || (signedIn() && request.auth.uid == uid
+                    && request.resource.data.get('disabled', false) == resource.data.get('disabled', false)
+                    && request.resource.data.get('role', 'member') == resource.data.get('role', 'member'));
+      allow delete: if isAdmin();
+    }
+  }
+}
