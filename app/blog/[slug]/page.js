@@ -83,7 +83,9 @@ export default function PostDetail() {
             <p className="muted" style={{ maxWidth: 440, margin: "0 auto 20px" }}>
               Bạn cần đăng nhập tài khoản để đọc toàn bộ nội dung của bài chia sẻ này.
             </p>
-            <Link href="/login" className="btn btn-primary">Đăng nhập hoặc Đăng ký</Link>
+            <Link href={`/login?from=${encodeURIComponent(`/blog/${slug}`)}`} className="btn btn-primary">
+              Đăng nhập hoặc Đăng ký
+            </Link>
           </div>
         ) : (
           <div className="prose">

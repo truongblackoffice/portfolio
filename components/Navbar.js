@@ -78,7 +78,14 @@ export default function Navbar() {
               <button className="btn btn-ghost btn-sm" id="nav-logout" onClick={logout}>Đăng xuất</button>
             </>
           ) : (
-            <Link href="/login" id="nav-login" className="btn btn-primary btn-sm" style={{ color: "#fff" }}>Đăng nhập</Link>
+            <Link
+              href={path && path !== "/login" ? `/login?from=${encodeURIComponent(path)}` : "/login"}
+              id="nav-login"
+              className="btn btn-primary btn-sm"
+              style={{ color: "#fff" }}
+            >
+              Đăng nhập
+            </Link>
           )}
         </nav>
       </header>

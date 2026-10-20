@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   watchAuth, login, logout, loginWithGoogle, authMessage, listItems, saveItem, removeItem, getProfile, saveProfile,
   uploadFile, isDemo, DEMO_EMAIL, DEMO_PASSWORD, slugify, fmtDate, roleOf, canEdit, ROLES, migrateAccess,
@@ -31,22 +32,36 @@ const TABS = [
 ];
 
 export default function Admin() {
+  const router = useRouter();
   const [user, setUser] = useState(undefined);
   const [tab, setTab] = useState("dash");
   useEffect(() => watchAuth(setUser), []);
   useEffect(() => { if (user && roleOf(user) === "admin") migrateAccess().catch(console.error); }, [user]);
 
+  // Nếu người dùng không phải admin thì tự động chuyển thẳng về trang chủ (Home)
+  useEffect(() => {
+    if (user && !canEdit(user)) {
+      router.replace("/");
+    }
+  }, [user, router]);
+
   if (user === undefined) return <div className="empty">Đang kiểm tra...</div>;
   if (!user) return <Login />;
-  if (!canEdit(user)) return (
-    <div className="container section">
-      <div className="form-card glass" style={{ maxWidth: 480, textAlign: "center" }}>
-        <h1 style={{ marginBottom: 12 }}>Không có quyền truy cập</h1>
-        <p className="muted" style={{ marginBottom: 20 }}>Tài khoản {user.email} ({ROLES[roleOf(user)]}) không có quyền quản trị.</p>
-        <button className="btn btn-ghost" id="denied-logout" onClick={logout}>Đăng xuất</button>
+  if (!canEdit(user)) {
+    return (
+      <div className="container section">
+        <div className="form-card glass" style={{ maxWidth: 480, textAlign: "center" }}>
+          <h1 style={{ marginBottom: 12 }}>Đang chuyển hướng...</h1>
+          <p className="muted" style={{ marginBottom: 20 }}>
+            Tài khoản {user.email} không có quyền quản trị. Đang tự động chuyển về Trang chủ...
+          </p>
+          <button className="btn btn-primary btn-sm" onClick={() => router.replace("/")}>
+            Về trang chủ ngay
+          </button>
+        </div>
       </div>
-    </div>
-  );
+    );
+  }
 
   const isAdmin = roleOf(user) === "admin";
 
