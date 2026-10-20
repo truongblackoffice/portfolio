@@ -28,6 +28,7 @@ export default function ProfilePage() {
   const [msg, setMsg] = useState({ text: "", type: "" });
   const [busy, setBusy] = useState(false);
   const fileInputRef = useRef(null);
+  const formFileInputRef = useRef(null);
 
   useEffect(() => {
     return watchAuth(async (u) => {
@@ -83,24 +84,30 @@ export default function ProfilePage() {
   const isAdmin = canEdit(user);
   const isGoogleUser = user.providerData?.[0]?.providerId === "google.com";
 
-  // Xử lý upload avatar
+  // Xử lý upload avatar (Chỉ cho phép tải ảnh từ máy, không nhận link thủ công)
   const handleAvatarFile = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      return setMsg({ text: "Vui lòng chọn một tệp hình ảnh hợp lệ (PNG, JPG, JPEG, WEBP).", type: "err" });
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      return setMsg({ text: "Kích thước ảnh tối đa là 5MB. Vui lòng chọn ảnh nhẹ hơn.", type: "err" });
+    }
     setUploading(true);
     setMsg({ text: "", type: "" });
     try {
       const url = await uploadFile(file);
       setPhotoURL(url);
       await updateUserProfile({ photoURL: url });
-      setMsg({ text: "Cập nhật ảnh đại diện thành công!", type: "ok" });
+      setMsg({ text: "🎉 Cập nhật ảnh đại diện thành công!", type: "ok" });
     } catch (err) {
       setMsg({ text: "Lỗi tải ảnh: " + err.message, type: "err" });
     }
     setUploading(false);
   };
 
-  // Cập nhật thông tin cá nhân
+  // Cập nhật thông tin cá nhân (Tên hiển thị & Giới thiệu Bio)
   const handleSaveProfile = async (e) => {
     e.preventDefault();
     setBusy(true);
@@ -108,7 +115,6 @@ export default function ProfilePage() {
     try {
       await updateUserProfile({
         displayName: displayName.trim(),
-        photoURL: photoURL.trim(),
         bio: bio.trim(),
       });
       setMsg({ text: "Lưu thông tin cá nhân thành công!", type: "ok" });
@@ -337,14 +343,85 @@ export default function ProfilePage() {
             />
           </div>
 
+          {/* Ảnh đại diện (Chỉ cho phép tải ảnh từ thiết bị, ẩn hoàn toàn link URL) */}
           <div className="field">
-            <label htmlFor="p-avatar">Đường dẫn ảnh đại diện (URL)</label>
-            <input
-              id="p-avatar"
-              value={photoURL}
-              onChange={(e) => setPhotoURL(e.target.value)}
-              placeholder="Dán link ảnh đại diện hoặc bấm 'Đổi ảnh' ở trên..."
-            />
+            <label>Ảnh đại diện</label>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 16,
+                padding: "16px 20px",
+                background: "hsla(0 0% 100% / .03)",
+                borderRadius: 14,
+                border: "1px solid var(--glass-border)",
+                flexWrap: "wrap",
+              }}
+            >
+              {photoURL ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={photoURL}
+                  alt="Avatar"
+                  style={{
+                    width: 60,
+                    height: 60,
+                    borderRadius: "50%",
+                    objectFit: "cover",
+                    border: "2px solid var(--primary)",
+                    boxShadow: "0 0 15px hsla(262 90% 68% / .35)",
+                  }}
+                />
+              ) : (
+                <div
+                  style={{
+                    width: 60,
+                    height: 60,
+                    borderRadius: "50%",
+                    background: "var(--grad)",
+                    color: "#fff",
+                    fontSize: "1.5rem",
+                    fontWeight: 700,
+                    display: "grid",
+                    placeItems: "center",
+                  }}
+                >
+                  {initial}
+                </div>
+              )}
+
+              <div style={{ flex: 1, minWidth: 220 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 6 }}>
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-sm"
+                    onClick={() => formFileInputRef.current?.click()}
+                    disabled={uploading}
+                    style={{
+                      background: "hsla(262 90% 68% / .15)",
+                      border: "1px solid hsla(262 90% 68% / .4)",
+                    }}
+                  >
+                    {uploading ? "⏳ Đang tải ảnh lên..." : "📤 Tải ảnh mới từ thiết bị"}
+                  </button>
+                  <input
+                    type="file"
+                    ref={formFileInputRef}
+                    onChange={handleAvatarFile}
+                    accept="image/*"
+                    style={{ display: "none" }}
+                  />
+                  {photoURL && (
+                    <span className="badge" style={{ fontSize: ".72rem", color: "#10b981", background: "hsla(160 84% 39% / .15)", border: "1px solid hsla(160 84% 39% / .3)" }}>
+                      ✓ Đã tải ảnh
+                    </span>
+                  )}
+                </div>
+                <p className="muted" style={{ fontSize: ".8rem", margin: 0 }}>
+                  Chỉ hỗ trợ tải trực tiếp từ máy (PNG, JPG, WEBP, tối đa 5MB).
+                </p>
+              </div>
+            </div>
           </div>
 
           <div className="field">
