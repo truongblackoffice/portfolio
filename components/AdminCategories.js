@@ -134,13 +134,13 @@ export default function AdminCategories() {
   const [icon, setIcon] = useState("🚀");
   const [color, setColor] = useState("#8b5cf6");
   const [desc, setDesc] = useState("");
-  const [editingId, setEditingId] = useState(null);
+  const [editingCategory, setEditingCategory] = useState(null);
   const [activeGroup, setActiveGroup] = useState("dev");
   const [showPicker, setShowPicker] = useState(true);
   const [busy, setBusy] = useState(false);
 
   const handleEdit = (c) => {
-    setEditingId(c.id && !c.id.startsWith("auto-") ? c.id : null);
+    setEditingCategory(c);
     setName(c.name);
     setIcon(c.icon || "📁");
     setColor(c.color || "#8b5cf6");
@@ -149,7 +149,7 @@ export default function AdminCategories() {
   };
 
   const handleCancel = () => {
-    setEditingId(null);
+    setEditingCategory(null);
     setName("");
     setIcon("🚀");
     setColor("#8b5cf6");
@@ -158,22 +158,43 @@ export default function AdminCategories() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!name.trim()) return;
+    const trimmedName = name.trim();
+    if (!trimmedName) return;
     setBusy(true);
     try {
+      const isUpdating = Boolean(editingCategory);
+      const originalName = editingCategory?.name;
+      const realDocId = editingCategory?.id && !editingCategory.id.startsWith("auto-") ? editingCategory.id : null;
+
       const payload = {
-        name: name.trim(),
+        name: trimmedName,
         icon: icon || "📁",
         color: color || "#8b5cf6",
         desc: desc.trim(),
       };
-      if (editingId) payload.id = editingId;
+      if (realDocId) payload.id = realDocId;
 
       await saveItem("categories", payload);
+
+      // Nếu cập nhật và đổi tên danh mục (ví dụ từ "Lập Trình" sang tên mới), đồng bộ cập nhật cho các bài viết và tài liệu cũ
+      if (isUpdating && originalName && originalName !== trimmedName) {
+        const [allPosts, allDocs] = await Promise.all([
+          listItems("posts"),
+          listItems("documents"),
+        ]);
+        const postUpdates = allPosts
+          .filter((p) => p.category === originalName)
+          .map((p) => saveItem("posts", { ...p, category: trimmedName }));
+        const docUpdates = allDocs
+          .filter((d) => d.category === originalName)
+          .map((d) => saveItem("documents", { ...d, category: trimmedName }));
+        await Promise.all([...postUpdates, ...docUpdates]);
+      }
+
       handleCancel();
       reload();
-    } catch (e) {
-      alert("Lỗi khi lưu danh mục: " + e.message);
+    } catch (err) {
+      alert("Lỗi khi lưu danh mục: " + err.message);
     }
     setBusy(false);
   };
@@ -198,15 +219,34 @@ export default function AdminCategories() {
         </button>
       </div>
 
-      {/* Form thêm mới / chỉnh sửa */}
-      <form onSubmit={handleSubmit} className="glass" style={{ padding: 20, borderRadius: 16, marginBottom: 28, border: editingId ? "1px solid var(--primary)" : "1px solid var(--glass-border)" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-          <h3 style={{ fontSize: "1.1rem", margin: 0, color: editingId ? "var(--accent)" : "inherit" }}>
-            {editingId ? `✏️ Đang chỉnh sửa danh mục: "${name}"` : "+ Thêm danh mục mới"}
-          </h3>
-          {editingId && (
+      {/* Form thêm mới / cập nhật */}
+      <form
+        onSubmit={handleSubmit}
+        className="glass"
+        style={{
+          padding: 22,
+          borderRadius: 16,
+          marginBottom: 28,
+          border: editingCategory ? "2px solid #10b981" : "1px solid var(--glass-border)",
+          background: editingCategory ? "hsla(160 84% 39% / .06)" : undefined,
+          boxShadow: editingCategory ? "0 0 30px hsla(160 84% 39% / .2)" : undefined,
+          transition: ".3s",
+        }}
+      >
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, flexWrap: "wrap", gap: 8 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <h3 style={{ fontSize: "1.15rem", margin: 0, color: editingCategory ? "#10b981" : "inherit" }}>
+              {editingCategory ? `✏️ Cập nhật danh mục: "${editingCategory.name}"` : "+ Thêm danh mục mới"}
+            </h3>
+            {editingCategory && (
+              <span className="badge" style={{ background: "hsla(160 84% 39% / .2)", color: "#10b981", border: "1px solid hsla(160 84% 39% / .4)" }}>
+                Đang ở chế độ Cập nhật
+              </span>
+            )}
+          </div>
+          {editingCategory && (
             <button type="button" className="btn btn-ghost btn-sm" onClick={handleCancel}>
-              Hủy chỉnh sửa
+              ❌ Hủy bỏ (Chuyển về tạo mới)
             </button>
           )}
         </div>
@@ -268,9 +308,32 @@ export default function AdminCategories() {
               placeholder="Mô tả tóm tắt nội dung chủ đề này..."
             />
           </div>
-          <button type="submit" className="btn btn-primary" disabled={busy} style={{ height: 44, minWidth: 100 }}>
-            {busy ? "Đang lưu..." : editingId ? "Lưu thay đổi" : "Tạo mới"}
-          </button>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button
+              type="submit"
+              className="btn btn-primary"
+              disabled={busy}
+              style={{
+                height: 44,
+                minWidth: 120,
+                background: editingCategory ? "linear-gradient(135deg, #059669, #10b981)" : undefined,
+                boxShadow: editingCategory ? "0 4px 18px hsla(160 84% 39% / .4)" : undefined,
+              }}
+            >
+              {busy ? "Đang lưu..." : editingCategory ? "💾 Cập nhật" : "+ Tạo mới"}
+            </button>
+            {editingCategory && (
+              <button
+                type="button"
+                className="btn btn-ghost"
+                onClick={handleCancel}
+                style={{ height: 44 }}
+                title="Hủy cập nhật"
+              >
+                Hủy
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Bảng chọn màu nhanh (Preset Colors) */}
@@ -362,48 +425,72 @@ export default function AdminCategories() {
       {/* Danh sách danh mục đã có */}
       <h3 style={{ fontSize: "1.1rem", marginBottom: 14 }}>Danh sách danh mục hiện có</h3>
       <div style={{ display: "grid", gap: 12 }}>
-        {(catData || []).map((c) => (
-          <div className="row glass" key={c.id || c.name} style={{ margin: 0 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-              <span style={{
-                fontSize: "1.6rem", width: 44, height: 44, display: "grid", placeItems: "center",
-                background: `${c.color || "var(--primary)"}22`, borderRadius: 10, border: `1px solid ${c.color || "var(--primary)"}66`,
-              }}>
-                {c.icon || "📁"}
-              </span>
-              <div>
-                <b style={{ fontSize: "1.05rem", color: c.color }}>{c.name}</b>
-                {c.desc && <p className="muted" style={{ fontSize: ".82rem", margin: "2px 0" }}>{c.desc}</p>}
-                <div className="muted" style={{ fontSize: ".78rem" }}>
-                  {c.postCount} bài viết · {c.docCount} tài liệu
+        {(catData || []).map((c) => {
+          const isSelected = editingCategory?.name === c.name;
+          return (
+            <div
+              className="row glass"
+              key={c.id || c.name}
+              style={{
+                margin: 0,
+                border: isSelected ? "2px solid #10b981" : undefined,
+                background: isSelected ? "hsla(160 84% 39% / .1)" : undefined,
+                boxShadow: isSelected ? "0 0 20px hsla(160 84% 39% / .2)" : undefined,
+                transition: ".3s",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                <span style={{
+                  fontSize: "1.6rem", width: 44, height: 44, display: "grid", placeItems: "center",
+                  background: `${c.color || "var(--primary)"}22`, borderRadius: 10, border: `1px solid ${c.color || "var(--primary)"}66`,
+                }}>
+                  {c.icon || "📁"}
+                </span>
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <b style={{ fontSize: "1.05rem", color: c.color }}>{c.name}</b>
+                    {isSelected && (
+                      <span className="badge" style={{ background: "hsla(160 84% 39% / .2)", color: "#10b981", fontSize: ".72rem", border: "1px solid hsla(160 84% 39% / .4)" }}>
+                        Đang chọn sửa
+                      </span>
+                    )}
+                  </div>
+                  {c.desc && <p className="muted" style={{ fontSize: ".82rem", margin: "2px 0" }}>{c.desc}</p>}
+                  <div className="muted" style={{ fontSize: ".78rem" }}>
+                    {c.postCount} bài viết · {c.docCount} tài liệu
+                  </div>
                 </div>
               </div>
-            </div>
-            <div className="actions" style={{ display: "flex", gap: 8 }}>
-              <button
-                type="button"
-                className="btn btn-ghost btn-sm"
-                onClick={() => handleEdit(c)}
-              >
-                ✏️ Sửa
-              </button>
-              {c.id && !c.id.startsWith("auto-") && (
+              <div className="actions" style={{ display: "flex", gap: 8 }}>
                 <button
                   type="button"
-                  className="btn btn-danger btn-sm"
-                  onClick={async () => {
-                    if (confirm(`Xóa danh mục "${c.name}"?`)) {
-                      await removeItem("categories", c.id);
-                      reload();
-                    }
+                  className={`btn btn-sm ${isSelected ? "btn-primary" : "btn-ghost"}`}
+                  onClick={() => handleEdit(c)}
+                  style={{
+                    background: isSelected ? "linear-gradient(135deg, #059669, #10b981)" : undefined,
                   }}
                 >
-                  Xóa
+                  {isSelected ? "✏️ Đang sửa" : "✏️ Sửa"}
                 </button>
-              )}
+                {c.id && !c.id.startsWith("auto-") && (
+                  <button
+                    type="button"
+                    className="btn btn-danger btn-sm"
+                    onClick={async () => {
+                      if (confirm(`Xóa danh mục "${c.name}"?`)) {
+                        await removeItem("categories", c.id);
+                        if (editingCategory?.id === c.id) handleCancel();
+                        reload();
+                      }
+                    }}
+                  >
+                    Xóa
+                  </button>
+                )}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
         {(!catData || catData.length === 0) && (
           <div className="empty">Chưa có danh mục nào. Hãy tạo danh mục đầu tiên ở trên!</div>
         )}
