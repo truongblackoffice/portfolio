@@ -1,27 +1,38 @@
 "use client";
 import Link from "next/link";
 import { getProfile, listItems } from "@/lib/db";
+import { seedProfile } from "@/lib/seed";
 import useAsync from "@/lib/useAsync";
 import { PostCard, DocCard } from "@/components/Cards";
 import { useSite } from "@/lib/SiteContext";
 
+const initialHomeData = {
+  profile: seedProfile,
+  posts: [],
+  docs: [],
+};
+
 export default function Home() {
   const { site } = useSite();
-  const { data } = useAsync(async () => {
-    const [profile, posts, docs] = await Promise.all([
-      getProfile(),
-      listItems("posts", true),
-      listItems("documents"),
-    ]);
-    return {
-      profile: profile || {},
-      posts: (posts || []).filter((p) => p.published).slice(0, 3),
-      docs: (docs || []).slice(0, 3),
-    };
-  }, [], "home_data");
+  const { data } = useAsync(
+    async () => {
+      const [profile, posts, docs] = await Promise.all([
+        getProfile(),
+        listItems("posts", true),
+        listItems("documents"),
+      ]);
+      return {
+        profile: profile || seedProfile,
+        posts: (posts || []).filter((p) => p.published).slice(0, 3),
+        docs: (docs || []).slice(0, 3),
+      };
+    },
+    [],
+    "home_data",
+    initialHomeData
+  );
 
-  if (!data) return <div className="empty">Đang tải...</div>;
-  const { profile, posts, docs } = data;
+  const { profile, posts, docs } = data || initialHomeData;
   const skills = profile.skills || [];
 
   return (
@@ -38,7 +49,15 @@ export default function Home() {
         </div>
         <div className="avatar-wrap">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img className="avatar" src={profile.avatar || "/avatar.jpg"} alt={profile.name || "Avatar"} />
+          <img
+            className="avatar"
+            src={profile.avatar || "/avatar.jpg"}
+            alt={profile.name || "Avatar"}
+            width="340"
+            height="340"
+            loading="eager"
+            decoding="async"
+          />
         </div>
       </section>
 

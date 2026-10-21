@@ -1,13 +1,14 @@
 "use client";
 import { getProfile } from "@/lib/db";
+import { seedProfile } from "@/lib/seed";
 import useAsync from "@/lib/useAsync";
 
 export default function About() {
-  const { data: p } = useAsync(getProfile, [], "about_profile");
-  if (!p) return <div className="empty">Đang tải...</div>;
-  const s = p.socials || {};
-  const experience = p.experience || [];
-  const skills = p.skills || [];
+  const { data: p } = useAsync(getProfile, [], "about_profile", seedProfile);
+  const profile = p || seedProfile;
+  const s = profile.socials || {};
+  const experience = profile.experience || [];
+  const skills = profile.skills || [];
 
   return (
     <div className="container section">

@@ -15,7 +15,11 @@ export default function PostDetail() {
 
   useEffect(() => watchAuth(setCurrentUser), []);
 
-  const { data: post, loading } = useAsync(() => getItem("posts", slug), [slug]);
+  const { data: post, loading } = useAsync(
+    () => getItem("posts", slug),
+    [slug],
+    slug ? `post_${slug}` : null
+  );
 
   // Tăng lượt xem 1 lần duy nhất trong mỗi phiên đọc (chống spam F5)
   useEffect(() => {
@@ -29,8 +33,8 @@ export default function PostDetail() {
     } catch {}
   }, [post?.id]);
 
-  if (loading || currentUser === undefined) return <div className="empty">Đang tải bài viết...</div>;
-  if (!post) {
+  if (loading && !post) return <div className="empty">Đang tải bài viết...</div>;
+  if (!loading && !post) {
     return (
       <div className="container section">
         <div className="empty">

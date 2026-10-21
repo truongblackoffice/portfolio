@@ -168,6 +168,7 @@ textarea { min-height: 120px; resize: vertical; }
 
 .reveal { animation: reveal .7s ease both; }
 @keyframes reveal { from { opacity: 0; transform: translateY(24px); } }
+@keyframes pulse { 0%, 100% { opacity: .6; } 50% { opacity: .25; } }
 
 @media (max-width: 800px) {
   .hero, .about-grid { grid-template-columns: 1fr; }
