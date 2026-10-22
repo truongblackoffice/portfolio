@@ -1,23 +1,116 @@
 "use client";
-import { useEffect, useState, useCallback } from "react";
-import { listComments, addComment, removeComment, fmtDate } from "@/lib/db";
+import { useState } from "react";
+import { listComments, addComment, removeComment, fmtDate, roleOf, isAdminUser } from "@/lib/db";
+import useAsync from "@/lib/useAsync";
+
+export function UserRoleBadge({ role, style = {} }) {
+  if (!role || role === "guest") return null;
+
+  if (role === "admin") {
+    return (
+      <span
+        className="badge"
+        style={{
+          fontSize: ".68rem",
+          padding: "1px 7px",
+          background: "hsla(262 90% 68% / .22)",
+          color: "var(--primary)",
+          border: "1px solid hsla(262 90% 68% / .45)",
+          fontWeight: 600,
+          borderRadius: 999,
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 3,
+          lineHeight: 1.4,
+          ...style,
+        }}
+      >
+        Admin
+      </span>
+    );
+  }
+
+  if (role === "editor") {
+    return (
+      <span
+        className="badge"
+        style={{
+          fontSize: ".68rem",
+          padding: "1px 7px",
+          background: "hsla(190 95% 58% / .18)",
+          color: "var(--accent)",
+          border: "1px solid hsla(190 95% 58% / .4)",
+          fontWeight: 600,
+          borderRadius: 999,
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 3,
+          lineHeight: 1.4,
+          ...style,
+        }}
+      >
+        Biên tập viên
+      </span>
+    );
+  }
+
+  if (role === "member") {
+    return (
+      <span
+        className="badge"
+        style={{
+          fontSize: ".68rem",
+          padding: "1px 7px",
+          background: "hsla(0 0% 100% / .08)",
+          color: "var(--muted)",
+          border: "1px solid var(--glass-border)",
+          fontWeight: 500,
+          borderRadius: 999,
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 3,
+          lineHeight: 1.4,
+          ...style,
+        }}
+      >
+        Thành viên
+      </span>
+    );
+  }
+
+  return null;
+}
+
+function getCommentRole(c, currentUser) {
+  if (c.authorRole && c.authorRole !== "guest") {
+    return c.authorRole;
+  }
+  if (c.authorEmail && isAdminUser({ email: c.authorEmail })) {
+    return "admin";
+  }
+  if (currentUser && (currentUser.uid === c.uid || (c.authorEmail && currentUser.email === c.authorEmail))) {
+    return roleOf(currentUser);
+  }
+  if (c.role) {
+    return c.role;
+  }
+  if (c.uid && c.uid !== "guest") {
+    return "member";
+  }
+  return null;
+}
 
 export default function Comments({ postId, currentUser, isAdmin }) {
-  const [comments, setComments] = useState([]);
+  const { data, reload } = useAsync(
+    () => (postId ? listComments(postId) : Promise.resolve([])),
+    [postId],
+    postId ? `comments_${postId}` : null
+  );
+  const comments = data || [];
   const [content, setContent] = useState("");
   const [guestName, setGuestName] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
-
-  const reload = useCallback(async () => {
-    if (!postId) return;
-    const list = await listComments(postId);
-    setComments(list);
-  }, [postId]);
-
-  useEffect(() => {
-    reload();
-  }, [reload]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -27,6 +120,7 @@ export default function Comments({ postId, currentUser, isAdmin }) {
     const authorEmail = currentUser?.email || "";
     const authorAvatar = currentUser?.photoURL || "";
     const uid = currentUser?.uid || "guest";
+    const authorRole = currentUser ? roleOf(currentUser) : "guest";
 
     setBusy(true);
     setErr("");
@@ -36,6 +130,7 @@ export default function Comments({ postId, currentUser, isAdmin }) {
         authorName,
         authorEmail,
         authorAvatar,
+        authorRole,
         content: content.trim(),
         uid,
       });
@@ -83,10 +178,10 @@ export default function Comments({ postId, currentUser, isAdmin }) {
         )}
 
         {currentUser && (
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10, fontSize: ".85rem" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10, fontSize: ".85rem", flexWrap: "wrap" }}>
             <span className="muted">Bình luận với tư cách:</span>
             <b>{currentUser.displayName || currentUser.email}</b>
-            {isAdmin && <span className="badge" style={{ fontSize: ".7rem" }}>Admin</span>}
+            <UserRoleBadge role={roleOf(currentUser)} />
           </div>
         )}
 
@@ -152,10 +247,13 @@ export default function Comments({ postId, currentUser, isAdmin }) {
                     </div>
                   )}
                   <div>
-                    <b style={{ fontSize: ".9rem" }}>{c.authorName}</b>
-                    <span className="muted" style={{ fontSize: ".76rem", marginLeft: 8 }}>
-                      {fmtDate(c.createdAt)}
-                    </span>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                      <b style={{ fontSize: ".9rem" }}>{c.authorName}</b>
+                      <UserRoleBadge role={getCommentRole(c, currentUser)} />
+                      <span className="muted" style={{ fontSize: ".76rem" }}>
+                        {fmtDate(c.createdAt)}
+                      </span>
+                    </div>
                   </div>
                 </div>
 
