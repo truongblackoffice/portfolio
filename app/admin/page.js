@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import {
   watchAuth, login, logout, loginWithGoogle, authMessage, listItems, saveItem, removeItem, getProfile, saveProfile,
   uploadFile, isDemo, DEMO_EMAIL, DEMO_PASSWORD, slugify, fmtDate, roleOf, canEdit, ROLES, migrateAccess,
+  hasPermission,
 } from "@/lib/db";
 import useAsync from "@/lib/useAsync";
 import { useSite, defaultSite } from "@/lib/SiteContext";
@@ -18,7 +19,7 @@ import AdminCategories from "@/components/AdminCategories";
 import AdminQuizzes from "@/components/AdminQuizzes";
 import AdminAnalytics from "@/components/AdminAnalytics";
 
-// [id, nhãn, chỉ admin?]
+// [id, nhãn]
 const TABS = [
   ["dash", "📊 Tổng quan & Thống kê"],
   ["posts", "✍️ Bài viết"],
@@ -26,11 +27,11 @@ const TABS = [
   ["categories", "🏷️ Danh mục"],
   ["quizzes", "🧠 Trắc nghiệm"],
   ["media", "🖼️ Thư viện Media"],
-  ["profile", "👤 Hồ sơ cá nhân", true],
-  ["appearance", "🎨 Giao diện & Banner", true],
-  ["users", "👥 Quản lý tài khoản", true],
-  ["messages", "📩 Hòm thư liên hệ", true],
-  ["backup", "💾 Sao lưu dữ liệu", true],
+  ["profile", "👤 Hồ sơ cá nhân"],
+  ["appearance", "🎨 Giao diện & Banner"],
+  ["users", "👥 Quản lý tài khoản"],
+  ["messages", "📩 Hòm thư liên hệ"],
+  ["backup", "💾 Sao lưu dữ liệu"],
 ];
 
 export default function Admin() {
@@ -40,22 +41,25 @@ export default function Admin() {
   useEffect(() => watchAuth(setUser), []);
   useEffect(() => { if (user && roleOf(user) === "admin") migrateAccess().catch(console.error); }, [user]);
 
-  // Nếu người dùng không phải admin thì tự động chuyển thẳng về trang chủ (Home)
+  // Nếu người dùng không có bất kỳ quyền quản trị nào thì chuyển về trang chủ
   useEffect(() => {
     if (user && !canEdit(user)) {
       router.replace("/");
     }
   }, [user, router]);
 
+  const allowedTabs = user ? TABS.filter(([k]) => hasPermission(user, k)) : [];
+  const currentTab = allowedTabs.some(([k]) => k === tab) ? tab : (allowedTabs[0]?.[0] || "dash");
+
   if (user === undefined) return <div className="empty">Đang kiểm tra...</div>;
   if (!user) return <Login />;
-  if (!canEdit(user)) {
+  if (!canEdit(user) || allowedTabs.length === 0) {
     return (
       <div className="container section">
         <div className="form-card glass" style={{ maxWidth: 480, textAlign: "center" }}>
-          <h1 style={{ marginBottom: 12 }}>Đang chuyển hướng...</h1>
+          <h1 style={{ marginBottom: 12 }}>Chưa được cấp quyền</h1>
           <p className="muted" style={{ marginBottom: 20 }}>
-            Tài khoản {user.email} không có quyền quản trị. Đang tự động chuyển về Trang chủ...
+            Tài khoản {user.email} chưa được phân quyền quản trị tính năng nào. Vui lòng liên hệ Quản trị viên để được cấp quyền.
           </p>
           <button className="btn btn-primary btn-sm" onClick={() => router.replace("/")}>
             Về trang chủ ngay
@@ -82,12 +86,12 @@ export default function Admin() {
       {isDemo && <div className="msg ok">Chế độ demo: dữ liệu lưu trong trình duyệt. Thêm cấu hình Firebase vào <code>.env.local</code> để dùng Firestore.</div>}
 
       <div className="admin-tabs">
-        {TABS.filter(([, , adminOnly]) => !adminOnly || isAdmin).map(([k, t]) => (
+        {allowedTabs.map(([k, t]) => (
           <a
             href="#"
             key={k}
             id={`tab-${k}`}
-            className={tab === k ? "active" : ""}
+            className={currentTab === k ? "active" : ""}
             onClick={(e) => { e.preventDefault(); setTab(k); }}
           >
             {t}
@@ -95,17 +99,17 @@ export default function Admin() {
         ))}
       </div>
 
-      {tab === "dash" && <AdminAnalytics admin={isAdmin} />}
-      {tab === "posts" && <Posts />}
-      {tab === "documents" && <Docs />}
-      {tab === "categories" && <AdminCategories />}
-      {tab === "quizzes" && <AdminQuizzes />}
-      {tab === "media" && <AdminMedia />}
-      {isAdmin && tab === "profile" && <AdminProfileVisual />}
-      {isAdmin && tab === "appearance" && <Appearance />}
-      {isAdmin && tab === "users" && <Users />}
-      {isAdmin && tab === "messages" && <Messages />}
-      {isAdmin && tab === "backup" && <AdminBackup />}
+      {currentTab === "dash" && hasPermission(user, "dash") && <AdminAnalytics admin={isAdmin} />}
+      {currentTab === "posts" && hasPermission(user, "posts") && <Posts />}
+      {currentTab === "documents" && hasPermission(user, "documents") && <Docs />}
+      {currentTab === "categories" && hasPermission(user, "categories") && <AdminCategories />}
+      {currentTab === "quizzes" && hasPermission(user, "quizzes") && <AdminQuizzes />}
+      {currentTab === "media" && hasPermission(user, "media") && <AdminMedia />}
+      {currentTab === "profile" && hasPermission(user, "profile") && <AdminProfileVisual />}
+      {currentTab === "appearance" && hasPermission(user, "appearance") && <Appearance />}
+      {currentTab === "users" && hasPermission(user, "users") && <Users />}
+      {currentTab === "messages" && hasPermission(user, "messages") && <Messages />}
+      {currentTab === "backup" && hasPermission(user, "backup") && <AdminBackup />}
     </div>
   );
 }
