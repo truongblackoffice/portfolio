@@ -24,6 +24,7 @@ export default function QuizEditor({ item, topics, onDone }) {
     membersOnly: Boolean(item.membersOnly),
     timeLimitMin: item.timeLimitMin ?? 0,
     passPercent: item.passPercent ?? 50,
+    maxExamPerHour: item.maxExamPerHour !== undefined ? item.maxExamPerHour : 5,
     shuffleQuestions: item.shuffleQuestions !== false,
     shuffleOptions: item.shuffleOptions !== false,
   });
@@ -158,6 +159,11 @@ export default function QuizEditor({ item, topics, onDone }) {
         <div className="field">
           <label>Điểm đạt (%)</label>
           <input type="number" min={0} max={100} value={f.passPercent} onChange={num("passPercent")} />
+        </div>
+        <div className="field">
+          <label>Lượt thi thử / 1 giờ (0 = vô hạn)</label>
+          <input type="number" min={0} max={100} value={f.maxExamPerHour ?? 5} onChange={num("maxExamPerHour")} placeholder="5" />
+          <small className="muted" style={{ fontSize: "0.78rem" }}>Chế độ Ôn tập luôn vô hạn lần</small>
         </div>
       </div>
       <div style={{ display: "flex", gap: 22, margin: "10px 0 6px", flexWrap: "wrap" }}>

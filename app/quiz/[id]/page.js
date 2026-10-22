@@ -4,7 +4,8 @@ import { useParams, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getItem, listItems, watchAuth, saveAttempt } from "@/lib/db";
 import useAsync from "@/lib/useAsync";
-import { buildSession, scoreSession, gradeQuestion, formatDuration, QUESTION_TYPES } from "@/lib/quiz";
+import { buildSession, scoreSession, gradeQuestion, formatDuration, QUESTION_TYPES, getExamLimitInfo, recordExamAttempt } from "@/lib/quiz";
+import { useSite } from "@/lib/SiteContext";
 import { renderIcon } from "@/lib/presets";
 import { Md, ReviewOptions, SolutionItem, letterOf } from "@/components/QuizParts";
 
@@ -34,6 +35,23 @@ export default function QuizPage() {
   const topic = data?.topic || null;
   const total = quiz?.questions?.length || 0;
 
+  const { site } = useSite();
+  const maxPerHour = quiz?.maxExamPerHour !== undefined ? quiz.maxExamPerHour : (site?.defaultMaxExamPerHour ?? 5);
+
+  const [limitInfo, setLimitInfo] = useState({ limited: false, remaining: 5, max: 5, isBlocked: false, nextAvailableMin: 0 });
+  const [blockedModal, setBlockedModal] = useState(false);
+
+  const updateLimit = useCallback(() => {
+    if (!quiz?.id) return null;
+    const info = getExamLimitInfo(quiz.id, maxPerHour);
+    setLimitInfo(info);
+    return info;
+  }, [quiz?.id, maxPerHour]);
+
+  useEffect(() => {
+    updateLimit();
+  }, [updateLimit]);
+
   const [phase, setPhase] = useState(() => (search.get("mode") === "study" ? "study" : "start"));
   const [mode, setMode] = useState("practice");
   const [optsOver, setOptsOver] = useState({});
@@ -58,6 +76,15 @@ export default function QuizPage() {
   const finishedRef = useRef(false);
 
   const begin = (m, source = quiz, retry = false) => {
+    if (m === "exam") {
+      const info = updateLimit() || limitInfo;
+      if (info?.isBlocked) {
+        setBlockedModal(true);
+        return;
+      }
+      recordExamAttempt(quiz.id);
+      updateLimit();
+    }
     const n = source.questions?.length || 0;
     const count = retry || opts.count >= n ? 0 : opts.count;
     const s = buildSession(source, { shuffleQuestions: opts.shuffleQuestions, shuffleOptions: opts.shuffleOptions, count });
@@ -74,6 +101,33 @@ export default function QuizPage() {
     setMode(m);
     setPhase("run");
     window.scrollTo({ top: 0 });
+  };
+
+  const renderBlockedModal = () => {
+    if (!blockedModal) return null;
+    return (
+      <div className="quiz-modal" role="dialog" aria-modal="true" onClick={() => setBlockedModal(false)}>
+        <div className="glass quiz-modal-box" style={{ maxWidth: 440, textAlign: "center" }} onClick={(e) => e.stopPropagation()}>
+          <div style={{ fontSize: "2.8rem", marginBottom: 8 }}>⏳</div>
+          <h3 style={{ marginBottom: 8 }}>Đã đạt giới hạn thi thử</h3>
+          <p className="muted" style={{ fontSize: ".92rem", lineHeight: 1.6, marginBottom: 16 }}>
+            Bạn đã sử dụng hết <b>{limitInfo.max} lượt thi thử</b> trong 1 giờ qua. Vui lòng quay lại sau <b>{limitInfo.nextAvailableMin} phút</b> nữa.
+          </p>
+          <div style={{ padding: 12, background: "rgba(16, 185, 129, 0.1)", borderRadius: 10, border: "1px solid rgba(16, 185, 129, 0.25)", marginBottom: 20, textAlign: "left" }}>
+            <b style={{ color: "#10b981", display: "block", marginBottom: 4 }}>💡 Ôn tập không giới hạn:</b>
+            <span style={{ fontSize: "0.85rem", color: "var(--foreground)" }}>
+              Chế độ <b>Ôn tập</b> hoàn toàn <b>vô hạn lần</b>, bạn có thể tự do luyện tập và xem ngay giải thích cho từng câu hỏi!
+            </span>
+          </div>
+          <div className="qrow" style={{ justifyContent: "center", gap: 10 }}>
+            <button className="btn btn-ghost btn-sm" type="button" onClick={() => setBlockedModal(false)}>Để sau</button>
+            <button className="btn btn-primary btn-sm" type="button" onClick={() => { setBlockedModal(false); begin("practice"); }}>
+              Chuyển sang Ôn tập ngay 🎯
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   const finish = useCallback(() => {
@@ -211,6 +265,7 @@ export default function QuizPage() {
             <span>· {total} câu</span>
             {quiz.timeLimitMin > 0 && <span>· ⏱ {quiz.timeLimitMin} phút (Thi thử)</span>}
             <span>· Đạt từ {quiz.passPercent ?? 50}%</span>
+            {limitInfo.limited && <span>· 🔄 Thi thử: tối đa {limitInfo.max} lượt/giờ</span>}
           </div>
           <h1 style={{ fontSize: "clamp(1.8rem, 4vw, 2.5rem)", margin: "12px 0" }}>{quiz.title}</h1>
           {quiz.description && <p className="muted" style={{ marginBottom: 18 }}>{quiz.description}</p>}
@@ -218,13 +273,40 @@ export default function QuizPage() {
           <div className="quiz-modes">
             <button className="quiz-mode" onClick={() => begin("practice")}>
               <span className="quiz-mode-ico">🎯</span>
-              <b>Ôn tập</b>
-              <span className="muted">Kiểm tra từng câu, xem đúng/sai và giải thích ngay.</span>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", gap: 6, flexWrap: "wrap" }}>
+                <b>Ôn tập</b>
+                <span style={{ fontSize: "0.72rem", background: "rgba(16, 185, 129, 0.15)", color: "#10b981", border: "1px solid rgba(16, 185, 129, 0.3)", padding: "2px 8px", borderRadius: 99, fontWeight: 600 }}>
+                  ♾️ Vô hạn lần
+                </span>
+              </div>
+              <span className="muted">Kiểm tra từng câu, xem đúng/sai và giải thích ngay. Ôn luyện tự do không giới hạn.</span>
             </button>
             <button className="quiz-mode" onClick={() => begin("exam")}>
               <span className="quiz-mode-ico">⏱️</span>
-              <b>Thi thử</b>
-              <span className="muted">{quiz.timeLimitMin > 0 ? `Giới hạn ${quiz.timeLimitMin} phút, ` : "Không giới hạn thời gian, "}chấm điểm khi nộp bài.</span>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", gap: 6, flexWrap: "wrap" }}>
+                <b>Thi thử</b>
+                {limitInfo.limited ? (
+                  <span style={{
+                    fontSize: "0.72rem",
+                    background: limitInfo.isBlocked ? "rgba(239, 68, 68, 0.15)" : "rgba(245, 158, 11, 0.15)",
+                    color: limitInfo.isBlocked ? "#ef4444" : "#f59e0b",
+                    border: `1px solid ${limitInfo.isBlocked ? "rgba(239, 68, 68, 0.3)" : "rgba(245, 158, 11, 0.3)"}`,
+                    padding: "2px 8px",
+                    borderRadius: 99,
+                    fontWeight: 600,
+                  }}>
+                    {limitInfo.isBlocked ? `Hết lượt (chờ ${limitInfo.nextAvailableMin}p)` : `Còn ${limitInfo.remaining}/${limitInfo.max} lượt/giờ`}
+                  </span>
+                ) : (
+                  <span style={{ fontSize: "0.72rem", background: "rgba(59, 130, 246, 0.15)", color: "#3b82f6", border: "1px solid rgba(59, 130, 246, 0.3)", padding: "2px 8px", borderRadius: 99, fontWeight: 600 }}>
+                    Không giới hạn
+                  </span>
+                )}
+              </div>
+              <span className="muted">
+                {quiz.timeLimitMin > 0 ? `Giới hạn ${quiz.timeLimitMin} phút, ` : "Không giới hạn thời gian, "}chấm điểm khi nộp bài.
+                {limitInfo.limited && ` (Tối đa ${limitInfo.max} lượt/giờ)`}
+              </span>
             </button>
             <button className="quiz-mode" onClick={() => { setOpen(new Set()); setPhase("study"); }}>
               <span className="quiz-mode-ico">📖</span>
@@ -261,6 +343,7 @@ export default function QuizPage() {
             </p>
           )}
         </div>
+        {renderBlockedModal()}
       </div>
     );
   }
@@ -327,6 +410,7 @@ export default function QuizPage() {
             />
           )) : <div className="empty">Bạn không sai câu nào 🎉</div>}
         </div>
+        {renderBlockedModal()}
       </div>
     );
   }

@@ -392,6 +392,28 @@ function Appearance() {
         </div>
       )}
 
+      {/* Cấu hình Ôn tập & Thi thử */}
+      <h3 style={{ margin: "24px 0 12px", borderBottom: "1px solid var(--glass-border)", paddingBottom: 8 }}>4. Quy định Ôn tập &amp; Thi thử</h3>
+      <div className="field">
+        <label>Số lượt thi thử mặc định trong 1 giờ (khi bộ đề không thiết lập riêng)</label>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <input
+            type="number"
+            min={0}
+            max={100}
+            style={{ maxWidth: 160 }}
+            value={f.defaultMaxExamPerHour ?? 5}
+            onChange={(e) => {
+              const val = Math.max(0, parseInt(e.target.value, 10) || 0);
+              setF((s) => ({ ...s, defaultMaxExamPerHour: val }));
+            }}
+          />
+          <span className="muted" style={{ fontSize: ".88rem" }}>
+            lượt / 1 giờ (Nhập <b>0</b> = không giới hạn). <i>Lưu ý: Chế độ Ôn tập luôn cho phép làm vô hạn lần.</i>
+          </span>
+        </div>
+      </div>
+
       <div style={{ display: "flex", gap: 12, marginTop: 10 }}>
         <button className="btn btn-primary" type="submit" disabled={busy} id="save-appearance">
           {busy ? "Đang lưu..." : "Lưu thay đổi giao diện"}
