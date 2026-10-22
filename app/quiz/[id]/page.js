@@ -165,6 +165,17 @@ export default function QuizPage() {
           <button className="btn btn-ghost btn-sm" onClick={() => setOpen(allOpen ? new Set() : new Set(keys))}>
             {allOpen ? "Thu gọn tất cả" : "Mở tất cả"}
           </button>
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm"
+            onClick={() => {
+              setOpen(new Set(keys));
+              setTimeout(() => window.print(), 150);
+            }}
+            title="In toàn bộ đề thi hoặc lưu về dạng tệp PDF"
+          >
+            🖨️ In đề / Xuất PDF
+          </button>
           <button className="btn btn-primary btn-sm" onClick={() => { setOpen(new Set()); setPhase("start"); window.scrollTo({ top: 0 }); }}>
             Làm bài ngay
           </button>
@@ -294,6 +305,17 @@ export default function QuizPage() {
           <button className={`chip ${onlyWrong ? "on" : ""}`} onClick={() => setOnlyWrong(!onlyWrong)}>Chỉ câu sai ({wrongIds.size})</button>
           <button className="btn btn-ghost btn-sm" onClick={() => setOpen(allOpen ? new Set() : new Set(reviewKeys))}>
             {allOpen ? "Thu gọn tất cả" : "Mở tất cả"}
+          </button>
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm"
+            onClick={() => {
+              setOpen(new Set(reviewKeys));
+              setTimeout(() => window.print(), 150);
+            }}
+            title="In toàn bộ kết quả bài làm hoặc lưu về PDF"
+          >
+            🖨️ In bài làm / Xuất PDF
           </button>
         </div>
         <div className="quiz-sol-list">

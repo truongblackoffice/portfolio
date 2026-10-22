@@ -481,3 +481,46 @@ textarea { min-height: 120px; resize: vertical; }
   box-shadow: 0 2px 10px hsla(230 20% 20% / 0.06);
 }
 
+/* Print Styles */
+@media print {
+  body {
+    background: #fff !important;
+    color: #000 !important;
+  }
+  body::before, body::after,
+  .nav, .footer, .btn,
+  .share-bar, .scroll-top-btn,
+  #site-nav, .theme-toggle-btn,
+  .quiz-actions, .quiz-nav {
+    display: none !important;
+  }
+  .container {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  .glass, .card, .quiz-card, .quiz-sol {
+    background: transparent !important;
+    border: 1px solid #ddd !important;
+    box-shadow: none !important;
+    color: #000 !important;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+  .quiz-sol-body {
+    display: block !important;
+  }
+  .gradient-text {
+    background: none !important;
+    -webkit-background-clip: unset !important;
+    -webkit-text-fill-color: #000 !important;
+    color: #000 !important;
+  }
+  a {
+    color: #000 !important;
+    text-decoration: none !important;
+  }
+}
+
+

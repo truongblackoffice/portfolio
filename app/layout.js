@@ -34,8 +34,22 @@ export const metadata = {
     description: "Trang cá nhân, blog chia sẻ kiến thức công nghệ và thư viện tài liệu trực tuyến.",
     url: "https://manhtruong.io.vn",
     siteName: "Nguyễn Mạnh Trường",
+    images: [
+      {
+        url: "/avatar.jpg",
+        width: 800,
+        height: 800,
+        alt: "Nguyễn Mạnh Trường",
+      },
+    ],
     locale: "vi_VN",
     type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Nguyễn Mạnh Trường | Portfolio & Kho kiến thức",
+    description: "Trang cá nhân, blog chia sẻ kiến thức công nghệ và thư viện tài liệu trực tuyến.",
+    images: ["/avatar.jpg"],
   },
   robots: {
     index: true,
