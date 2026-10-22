@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import {
   watchAuth, login, logout, loginWithGoogle, authMessage, listItems, saveItem, removeItem, getProfile, saveProfile,
@@ -8,6 +8,11 @@ import {
 } from "@/lib/db";
 import useAsync from "@/lib/useAsync";
 import { useSite, defaultSite } from "@/lib/SiteContext";
+
+const emptySubscribe = () => () => {};
+function useMounted() {
+  return useSyncExternalStore(emptySubscribe, () => true, () => false);
+}
 
 import Users from "@/components/AdminUsers";
 import PostEditor from "@/components/PostEditor";
@@ -38,6 +43,7 @@ export default function Admin() {
   const router = useRouter();
   const [user, setUser] = useState(undefined);
   const [tab, setTab] = useState("dash");
+  const mounted = useMounted();
   useEffect(() => watchAuth(setUser), []);
   useEffect(() => { if (user && roleOf(user) === "admin") migrateAccess().catch(console.error); }, [user]);
 
@@ -51,7 +57,7 @@ export default function Admin() {
   const allowedTabs = user ? TABS.filter(([k]) => hasPermission(user, k)) : [];
   const currentTab = allowedTabs.some(([k]) => k === tab) ? tab : (allowedTabs[0]?.[0] || "dash");
 
-  if (user === undefined) return <div className="empty">Đang kiểm tra...</div>;
+  if (!mounted || user === undefined) return <div className="empty">Đang kiểm tra...</div>;
   if (!user) return <Login />;
   if (!canEdit(user) || allowedTabs.length === 0) {
     return (
@@ -217,7 +223,7 @@ function Posts() {
           </div>
         </div>
       ))}
-      {(!data || data.length === 0) && <div className="empty">Chưa có bài viết nào. Bấm nút "+ Viết bài mới" để tạo bài viết đầu tiên!</div>}
+      {(!data || data.length === 0) && <div className="empty">Chưa có bài viết nào. Bấm nút &quot;+ Viết bài mới&quot; để tạo bài viết đầu tiên!</div>}
     </>
   );
 }
@@ -251,7 +257,7 @@ function Docs() {
           </div>
         </div>
       ))}
-      {(!data || data.length === 0) && <div className="empty">Chưa có tài liệu nào. Bấm nút "+ Thêm tài liệu mới" để chia sẻ file đầu tiên!</div>}
+      {(!data || data.length === 0) && <div className="empty">Chưa có tài liệu nào. Bấm nút &quot;+ Thêm tài liệu mới&quot; để chia sẻ file đầu tiên!</div>}
     </>
   );
 }
@@ -259,11 +265,14 @@ function Docs() {
 function Appearance() {
   const { site, refresh } = useSite();
   const [f, setF] = useState(site);
+  const [prevSite, setPrevSite] = useState(site);
+  if (site !== prevSite) {
+    setPrevSite(site);
+    setF(site);
+  }
   const [ok, setOk] = useState(false);
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
-
-  useEffect(() => setF(site), [site]);
 
   const set = (k) => (e) => { setOk(false); setF({ ...f, [k]: e.target.value }); };
   const setBanner = (k) => (e) => {
