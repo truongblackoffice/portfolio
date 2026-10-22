@@ -81,7 +81,7 @@ export default function PostDetail() {
         )}
 
         {isLocked ? (
-          <div className="glass" style={{ padding: 32, textAlign: "center", borderRadius: 16, margin: "24px 0", background: "hsla(240 30% 8% / .8)" }}>
+          <div className="glass" style={{ padding: 32, textAlign: "center", borderRadius: 16, margin: "24px 0" }}>
             <div style={{ fontSize: "2.4rem", marginBottom: 12 }}>🔒</div>
             <h3 style={{ marginBottom: 10 }}>Bài viết dành riêng cho thành viên</h3>
             <p className="muted" style={{ maxWidth: 440, margin: "0 auto 20px" }}>

@@ -334,7 +334,7 @@ export default function QuizEditor({ item, topics, onDone }) {
 
           {/* Bảng tóm tắt nhanh cách điền */}
           <div style={{ marginTop: 12, paddingTop: 10, borderTop: "1px dashed var(--glass-border)", fontSize: ".8rem", color: "var(--muted)", lineHeight: 1.55 }}>
-            <div style={{ fontWeight: 600, color: "#fff", marginBottom: 4 }}>💡 Cách điền các trường trong JSON:</div>
+            <div style={{ fontWeight: 600, color: "var(--text)", marginBottom: 4 }}>💡 Cách điền các trường trong JSON:</div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 6 }}>
               <div>• <code>text</code>: Nội dung câu hỏi (chấp nhận cả chữ, công thức, Markdown).</div>
               <div>• <code>options</code>: Mảng 4 lựa chọn <code>[&quot;A...&quot;, &quot;B...&quot;, &quot;C...&quot;, &quot;D...&quot;]</code>.</div>
@@ -459,7 +459,7 @@ export default function QuizEditor({ item, topics, onDone }) {
           <div
             className="glass"
             style={{
-              background: "var(--bg-elevated, #161822)",
+              background: "var(--bg-2)",
               border: "1px solid var(--glass-border)",
               borderRadius: 20,
               width: "100%",
@@ -467,7 +467,7 @@ export default function QuizEditor({ item, topics, onDone }) {
               maxHeight: "92vh",
               display: "flex",
               flexDirection: "column",
-              boxShadow: "0 25px 70px rgba(0, 0, 0, 0.65)",
+              boxShadow: "0 25px 70px rgba(0, 0, 0, 0.45)",
               overflow: "hidden",
             }}
             onClick={(e) => e.stopPropagation()}
@@ -499,7 +499,7 @@ export default function QuizEditor({ item, topics, onDone }) {
                   📋
                 </div>
                 <div>
-                  <h3 style={{ margin: 0, fontSize: "1.05rem", fontWeight: 700, color: "#fff" }}>
+                  <h3 style={{ margin: 0, fontSize: "1.05rem", fontWeight: 700, color: "var(--text)" }}>
                     Ô Mẫu JSON Chuẩn &amp; Hướng Dẫn Cách Điền
                   </h3>
                   <p className="muted" style={{ margin: "2px 0 0", fontSize: ".8rem" }}>
@@ -525,7 +525,7 @@ export default function QuizEditor({ item, topics, onDone }) {
                 gap: 8,
                 padding: "12px 20px 8px",
                 borderBottom: "1px solid var(--glass-border)",
-                background: "rgba(0,0,0,0.2)",
+                background: "rgba(0,0,0,0.08)",
                 flexWrap: "wrap",
               }}
             >
@@ -559,7 +559,7 @@ export default function QuizEditor({ item, topics, onDone }) {
             <div style={{ padding: "16px 20px", overflowY: "auto", flex: 1, display: "flex", flexDirection: "column", gap: 14 }}>
               <div>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                  <span style={{ fontSize: ".85rem", fontWeight: 600, color: "#fff" }}>
+                  <span style={{ fontSize: ".85rem", fontWeight: 600, color: "var(--text)" }}>
                     {activeJsonTab === "guided"
                       ? "Nội dung mẫu JSON có giải thích cách điền từng dòng:"
                       : activeJsonTab === "simple"
@@ -647,7 +647,7 @@ export default function QuizEditor({ item, topics, onDone }) {
                 <div style={{ overflowX: "auto" }}>
                   <table style={{ width: "100%", fontSize: ".82rem", borderCollapse: "collapse", textAlign: "left" }}>
                     <thead>
-                      <tr style={{ borderBottom: "1px solid var(--glass-border)", color: "#fff" }}>
+                      <tr style={{ borderBottom: "1px solid var(--glass-border)", color: "var(--text)" }}>
                         <th style={{ padding: "6px 8px" }}>Trường</th>
                         <th style={{ padding: "6px 8px" }}>Kiểu</th>
                         <th style={{ padding: "6px 8px" }}>Cách điền &amp; Ý nghĩa</th>
