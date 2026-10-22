@@ -2,7 +2,14 @@
 import { useState } from "react";
 import { saveItem } from "@/lib/db";
 import { QUESTION_TYPES, TF_OPTIONS, newQuestion, validateQuiz } from "@/lib/quiz";
-import { parseQuizInput, SAMPLE_QUIZ_TEXT, SAMPLE_QUIZ_JSON } from "@/lib/quizParser";
+import {
+  parseQuizInput,
+  SAMPLE_QUIZ_TEXT,
+  SAMPLE_QUIZ_JSON,
+  SAMPLE_JSON_GUIDED,
+  SAMPLE_JSON_SIMPLE,
+  SAMPLE_AI_PROMPT,
+} from "@/lib/quizParser";
 import { isImageIcon } from "@/lib/presets";
 
 const csv = (s) => s.split(",").map((x) => x.trim()).filter(Boolean);
@@ -26,6 +33,9 @@ export default function QuizEditor({ item, topics, onDone }) {
   const [bulk, setBulk] = useState("");
   const [preview, setPreview] = useState(null);
   const [copiedJson, setCopiedJson] = useState(false);
+  const [showJsonModal, setShowJsonModal] = useState(false);
+  const [activeJsonTab, setActiveJsonTab] = useState("guided"); // guided | simple | ai
+  const [copiedModalTab, setCopiedModalTab] = useState(false);
 
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
   const num = (k) => (e) => setF({ ...f, [k]: Math.max(0, parseInt(e.target.value, 10) || 0) });
@@ -158,106 +168,194 @@ export default function QuizEditor({ item, topics, onDone }) {
       </div>
 
       {/* Nhập hàng loạt */}
+      {/* Nhập hàng loạt */}
       <details className="quiz-bulk">
-        <summary>⚡ Nhập hàng loạt từ văn bản / JSON</summary>
-        <p className="muted" style={{ fontSize: ".85rem", margin: "10px 0" }}>
+        <summary
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 12,
+            cursor: "pointer",
+            flexWrap: "wrap",
+            padding: "2px 0",
+          }}
+        >
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 8, fontWeight: 700, fontSize: "1rem" }}>
+            ⚡ Nhập hàng loạt từ văn bản / JSON
+          </span>
+          <button
+            type="button"
+            className="btn btn-sm"
+            style={{
+              background: "linear-gradient(135deg, rgba(99,102,241,0.25), rgba(168,85,247,0.3))",
+              border: "1px solid rgba(168,85,247,0.6)",
+              color: "#fff",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 8,
+              fontWeight: 600,
+              padding: "5px 14px",
+              borderRadius: 999,
+              fontSize: ".83rem",
+              boxShadow: "0 2px 10px rgba(168,85,247,0.2)",
+              transition: "all .2s ease",
+            }}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setShowJsonModal(true);
+            }}
+            title="Bấm để mở ô mẫu JSON có hướng dẫn chi tiết cách điền và nút copy"
+          >
+            <span>📋 Ô Mẫu JSON &amp; Cách điền</span>
+            <span
+              style={{
+                background: "rgba(255,255,255,0.22)",
+                borderRadius: 999,
+                padding: "1px 7px",
+                fontSize: ".7rem",
+                fontWeight: 700,
+              }}
+            >
+              Copy
+            </span>
+          </button>
+        </summary>
+
+        <p className="muted" style={{ fontSize: ".85rem", margin: "12px 0 10px" }}>
           Hỗ trợ nhập hàng loạt câu hỏi bằng <b>văn bản thông thường</b> (dạng <code>Câu 1:... A. B. C. Đáp án:...</code>) hoặc <b>chuỗi JSON chuẩn</b>.
         </p>
 
-        {/* Hướng dẫn chi tiết cấu trúc JSON */}
-        <details style={{ background: "hsla(0 0% 100% / .03)", borderRadius: 12, padding: "12px 16px", margin: "12px 0", border: "1px solid var(--glass-border)" }}>
-          <summary style={{ cursor: "pointer", fontWeight: 600, color: "var(--accent)", display: "flex", alignItems: "center", gap: 6, fontSize: ".9rem" }}>
-            <span>📖 Hướng dẫn chi tiết cấu trúc viết JSON tạo bộ đề</span>
-            <span className="badge" style={{ fontSize: ".7rem", marginLeft: "auto" }}>Xem quy chuẩn</span>
-          </summary>
-          <div style={{ marginTop: 12, fontSize: ".85rem", lineHeight: 1.6 }}>
-            <p style={{ margin: "6px 0 10px" }}>
-              Cấu trúc JSON là một mảng các câu hỏi <code>[...]</code> hoặc một đối tượng có trường <code>&#123; &quot;questions&quot;: [...] &#125;</code>:
-            </p>
-            <div style={{ overflowX: "auto", marginBottom: 12 }}>
-              <table style={{ width: "100%", fontSize: ".82rem", borderCollapse: "collapse", textAlign: "left" }}>
-                <thead>
-                  <tr style={{ borderBottom: "1px solid var(--glass-border)", color: "var(--accent)" }}>
-                    <th style={{ padding: "6px 8px" }}>Trường</th>
-                    <th style={{ padding: "6px 8px" }}>Kiểu</th>
-                    <th style={{ padding: "6px 8px" }}>Mô tả &amp; Ví dụ</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr style={{ borderBottom: "1px solid hsla(0 0% 100% / .05)" }}>
-                    <td style={{ padding: "6px 8px" }}><code>text</code></td>
-                    <td style={{ padding: "6px 8px" }}>string *</td>
-                    <td style={{ padding: "6px 8px" }}>Nội dung câu hỏi (chấp nhận cả <code>&quot;question&quot;</code> hoặc <code>&quot;text&quot;</code>, hỗ trợ Markdown).</td>
-                  </tr>
-                  <tr style={{ borderBottom: "1px solid hsla(0 0% 100% / .05)" }}>
-                    <td style={{ padding: "6px 8px" }}><code>options</code></td>
-                    <td style={{ padding: "6px 8px" }}>array *</td>
-                    <td style={{ padding: "6px 8px" }}>Mảng các đáp án lựa chọn, ví dụ: <code>[&quot;A. ...&quot;, &quot;B. ...&quot;, &quot;C. ...&quot;, &quot;D. ...&quot;]</code>.</td>
-                  </tr>
-                  <tr style={{ borderBottom: "1px solid hsla(0 0% 100% / .05)" }}>
-                    <td style={{ padding: "6px 8px" }}><code>correct</code></td>
-                    <td style={{ padding: "6px 8px" }}>number / string / array *</td>
-                    <td style={{ padding: "6px 8px" }}>
-                      Đáp án đúng (chấp nhận cả trường <code>&quot;answer&quot;</code>):<br/>
-                      • <b>1 đáp án</b>: số index (bắt đầu từ 0: <code>0</code>=A, <code>1</code>=B, <code>2</code>=C, <code>3</code>=D) hoặc chữ cái <code>&quot;A&quot;</code>, <code>&quot;B&quot;</code>.<br/>
-                      • <b>Nhiều đáp án</b>: mảng số <code>[0, 2]</code> hoặc mảng chữ <code>[&quot;A&quot;, &quot;C&quot;]</code>.<br/>
-                      • <b>Đúng / Sai</b>: số <code>0</code> (Đúng) / <code>1</code> (Sai), hoặc boolean <code>true</code>/<code>false</code>.
-                    </td>
-                  </tr>
-                  <tr style={{ borderBottom: "1px solid hsla(0 0% 100% / .05)" }}>
-                    <td style={{ padding: "6px 8px" }}><code>type</code></td>
-                    <td style={{ padding: "6px 8px" }}>string</td>
-                    <td style={{ padding: "6px 8px" }}>Tùy chọn: <code>&quot;single&quot;</code> (1 đáp án), <code>&quot;multiple&quot;</code> (nhiều đáp án), <code>&quot;truefalse&quot;</code> (Đúng/Sai).</td>
-                  </tr>
-                  <tr>
-                    <td style={{ padding: "6px 8px" }}><code>explanation</code></td>
-                    <td style={{ padding: "6px 8px" }}>string</td>
-                    <td style={{ padding: "6px 8px" }}>Lời giải thích chi tiết khi người học xem kết quả bài thi.</td>
-                  </tr>
-                </tbody>
-              </table>
+        {/* Ô MẪU JSON CÓ HƯỚNG DẪN CÁCH ĐIỀN TRỰC TIẾP */}
+        <div
+          style={{
+            background: "hsla(0 0% 100% / .03)",
+            borderRadius: 14,
+            padding: "14px 16px",
+            margin: "12px 0 16px",
+            border: "1px solid var(--glass-border)",
+            boxShadow: "inset 0 1px 0 rgba(255,255,255,0.05)",
+          }}
+        >
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10, marginBottom: 10 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: "1.1rem" }}>📋</span>
+              <b style={{ color: "var(--accent)", fontSize: ".92rem" }}>Ô Mẫu JSON Chuẩn Có Hướng Dẫn Cách Điền</b>
             </div>
-
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-              <span className="muted" style={{ fontSize: ".8rem" }}>Mẫu JSON hoàn chỉnh:</span>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
               <button
                 type="button"
-                className="btn btn-ghost btn-sm"
-                style={{ fontSize: ".75rem", padding: "2px 8px" }}
+                className={`btn btn-sm ${activeJsonTab === "guided" ? "btn-primary" : "btn-ghost"}`}
+                style={{ fontSize: ".76rem", padding: "3px 10px", borderRadius: 8 }}
+                onClick={() => setActiveJsonTab("guided")}
+              >
+                Mẫu đầy đủ (3 dạng)
+              </button>
+              <button
+                type="button"
+                className={`btn btn-sm ${activeJsonTab === "simple" ? "btn-primary" : "btn-ghost"}`}
+                style={{ fontSize: ".76rem", padding: "3px 10px", borderRadius: 8 }}
+                onClick={() => setActiveJsonTab("simple")}
+              >
+                Mẫu 1 đáp án A/B/C/D
+              </button>
+              <button
+                type="button"
+                className={`btn btn-sm ${activeJsonTab === "ai" ? "btn-primary" : "btn-ghost"}`}
+                style={{ fontSize: ".76rem", padding: "3px 10px", borderRadius: 8 }}
+                onClick={() => setActiveJsonTab("ai")}
+              >
+                🤖 Prompt cho AI
+              </button>
+            </div>
+          </div>
+
+          <div style={{ position: "relative", marginBottom: 10 }}>
+            <textarea
+              readOnly
+              rows={8}
+              value={activeJsonTab === "guided" ? SAMPLE_JSON_GUIDED : activeJsonTab === "simple" ? SAMPLE_JSON_SIMPLE : SAMPLE_AI_PROMPT}
+              style={{
+                width: "100%",
+                background: "hsla(0 0% 0% / .55)",
+                padding: "12px 14px",
+                borderRadius: 10,
+                border: "1px solid var(--glass-border)",
+                fontSize: ".8rem",
+                lineHeight: 1.5,
+                fontFamily: "var(--font-geist-mono), monospace",
+                color: "#e2e8f0",
+                resize: "vertical",
+              }}
+              onClick={(e) => e.target.select()}
+            />
+          </div>
+
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <button
+                type="button"
+                className="btn btn-primary btn-sm"
+                style={{ fontSize: ".8rem", padding: "5px 14px" }}
                 onClick={() => {
-                  navigator.clipboard?.writeText(SAMPLE_QUIZ_JSON);
+                  const content = activeJsonTab === "guided" ? SAMPLE_JSON_GUIDED : activeJsonTab === "simple" ? SAMPLE_JSON_SIMPLE : SAMPLE_AI_PROMPT;
+                  navigator.clipboard?.writeText(content);
                   setCopiedJson(true);
                   setTimeout(() => setCopiedJson(false), 2000);
                 }}
               >
-                {copiedJson ? "✅ Đã sao chép!" : "📋 Sao chép mẫu JSON"}
+                {copiedJson ? "✅ Đã sao chép vào bộ nhớ!" : "📋 Sao chép ô mẫu này"}
               </button>
+              {activeJsonTab !== "ai" && (
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm"
+                  style={{ fontSize: ".8rem", padding: "5px 12px" }}
+                  onClick={() => {
+                    const content = activeJsonTab === "guided" ? SAMPLE_JSON_GUIDED : SAMPLE_JSON_SIMPLE;
+                    setBulk(content);
+                    setPreview(null);
+                  }}
+                >
+                  📥 Nạp mẫu vào ô nhập bên dưới
+                </button>
+              )}
             </div>
-            <pre style={{
-              background: "hsla(0 0% 0% / .4)",
-              padding: 12,
-              borderRadius: 8,
-              border: "1px solid var(--glass-border)",
-              fontSize: ".78rem",
-              maxHeight: 180,
-              overflowY: "auto",
-              fontFamily: "var(--font-geist-mono), monospace",
-            }}>
-              <code>{SAMPLE_QUIZ_JSON}</code>
-            </pre>
-            <p className="muted" style={{ fontSize: ".78rem", marginTop: 8 }}>
-              💡 <b>Mẹo dùng AI (ChatGPT, Claude, Gemini):</b> Bạn có thể bấm nút &quot;Sao chép mẫu JSON&quot; ở trên, gửi cho AI với câu lệnh: <i>&quot;Hãy tạo cho tôi 10 câu hỏi trắc nghiệm về [Chủ đề của bạn] theo đúng cấu trúc JSON sau: [Dán mẫu vào]&quot;</i> sau đó dán kết quả vào ô bên dưới!
-            </p>
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              style={{ fontSize: ".8rem", color: "var(--accent)" }}
+              onClick={() => setShowJsonModal(true)}
+            >
+              📖 Xem chi tiết quy chuẩn &amp; Mẹo dùng AI ↗
+            </button>
           </div>
-        </details>
 
+          {/* Bảng tóm tắt nhanh cách điền */}
+          <div style={{ marginTop: 12, paddingTop: 10, borderTop: "1px dashed var(--glass-border)", fontSize: ".8rem", color: "var(--muted)", lineHeight: 1.55 }}>
+            <div style={{ fontWeight: 600, color: "#fff", marginBottom: 4 }}>💡 Cách điền các trường trong JSON:</div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 6 }}>
+              <div>• <code>text</code>: Nội dung câu hỏi (chấp nhận cả chữ, công thức, Markdown).</div>
+              <div>• <code>options</code>: Mảng 4 lựa chọn <code>[&quot;A...&quot;, &quot;B...&quot;, &quot;C...&quot;, &quot;D...&quot;]</code>.</div>
+              <div>• <code>correct</code>: Đáp án đúng: số index từ 0 (0=A, 1=B, 2=C, 3=D) hoặc chữ <code>&quot;B&quot;</code>; nhiều đáp án: <code>[0, 2]</code>.</div>
+              <div>• <code>type</code>: <code>&quot;single&quot;</code> (1 đáp án), <code>&quot;multiple&quot;</code> (nhiều đáp án), <code>&quot;truefalse&quot;</code> (Đúng/Sai).</div>
+              <div>• <code>explanation</code>: Lời giải thích khi người thi hoàn thành câu hỏi.</div>
+            </div>
+          </div>
+        </div>
+
+        <div style={{ margin: "14px 0 6px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <label style={{ fontWeight: 600, fontSize: ".9rem" }}>Dán nội dung câu hỏi vào đây:</label>
+          <span className="muted" style={{ fontSize: ".78rem" }}>Hỗ trợ cả dạng văn bản và JSON</span>
+        </div>
         <textarea
           rows={10} value={bulk} onChange={(e) => { setBulk(e.target.value); setPreview(null); }}
-          placeholder="Dán nội dung văn bản hoặc mã JSON vào đây..." style={{ fontFamily: "var(--font-geist-mono), monospace", fontSize: ".88rem" }}
+          placeholder="Dán nội dung văn bản (Câu 1: ... A. ... B. ... Đáp án: ...) hoặc dán chuỗi JSON vào đây..." style={{ fontFamily: "var(--font-geist-mono), monospace", fontSize: ".88rem" }}
         />
         <div className="qrow" style={{ gap: 8, marginTop: 10, flexWrap: "wrap" }}>
-          <button type="button" className="btn btn-ghost btn-sm" onClick={() => { setBulk(SAMPLE_QUIZ_TEXT); setPreview(null); }}>📝 Chèn mẫu văn bản</button>
-          <button type="button" className="btn btn-ghost btn-sm" onClick={() => { setBulk(SAMPLE_QUIZ_JSON); setPreview(null); }}>📋 Chèn mẫu JSON</button>
+          <button type="button" className="btn btn-ghost btn-sm" onClick={() => { setBulk(SAMPLE_QUIZ_TEXT); setPreview(null); }}>📝 Chèn mẫu văn bản thường</button>
+          <button type="button" className="btn btn-ghost btn-sm" onClick={() => { setBulk(SAMPLE_JSON_GUIDED); setPreview(null); }}>📋 Chèn mẫu JSON có hướng dẫn</button>
           <button type="button" className="btn btn-primary btn-sm" disabled={!bulk.trim()} onClick={runPreview}>🔍 Xem trước &amp; Kiểm tra</button>
         </div>
         {preview && (
@@ -339,6 +437,264 @@ export default function QuizEditor({ item, topics, onDone }) {
         <button className="btn btn-primary" type="submit" disabled={busy}>{busy ? "Đang lưu..." : "Lưu bộ đề"}</button>
         <button className="btn btn-ghost" type="button" onClick={onDone}>Hủy</button>
       </div>
+
+      {/* Modal Ô Mẫu JSON & Hướng Dẫn Cách Điền */}
+      {showJsonModal && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 99999,
+            background: "rgba(0, 0, 0, 0.78)",
+            backdropFilter: "blur(10px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "16px",
+          }}
+          onClick={() => setShowJsonModal(false)}
+        >
+          <div
+            className="glass"
+            style={{
+              background: "var(--bg-elevated, #161822)",
+              border: "1px solid var(--glass-border)",
+              borderRadius: 20,
+              width: "100%",
+              maxWidth: 780,
+              maxHeight: "92vh",
+              display: "flex",
+              flexDirection: "column",
+              boxShadow: "0 25px 70px rgba(0, 0, 0, 0.65)",
+              overflow: "hidden",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header modal */}
+            <div
+              style={{
+                padding: "16px 20px",
+                borderBottom: "1px solid var(--glass-border)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                background: "linear-gradient(135deg, rgba(99,102,241,0.1), rgba(168,85,247,0.1))",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <div
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: 10,
+                    background: "linear-gradient(135deg, var(--accent), #a855f7)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: "1.2rem",
+                  }}
+                >
+                  📋
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: "1.05rem", fontWeight: 700, color: "#fff" }}>
+                    Ô Mẫu JSON Chuẩn &amp; Hướng Dẫn Cách Điền
+                  </h3>
+                  <p className="muted" style={{ margin: "2px 0 0", fontSize: ".8rem" }}>
+                    Sao chép mẫu ra Notepad hoặc gửi cho AI để viết đề thi dễ dàng
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                style={{ fontSize: "1.2rem", width: 32, height: 32, padding: 0, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 8 }}
+                onClick={() => setShowJsonModal(false)}
+                aria-label="Đóng"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Tabs chuyển đổi giữa 3 mẫu */}
+            <div
+              style={{
+                display: "flex",
+                gap: 8,
+                padding: "12px 20px 8px",
+                borderBottom: "1px solid var(--glass-border)",
+                background: "rgba(0,0,0,0.2)",
+                flexWrap: "wrap",
+              }}
+            >
+              <button
+                type="button"
+                className={`btn btn-sm ${activeJsonTab === "guided" ? "btn-primary" : "btn-ghost"}`}
+                style={{ fontSize: ".82rem", borderRadius: 8, padding: "6px 14px" }}
+                onClick={() => setActiveJsonTab("guided")}
+              >
+                🔹 Mẫu đầy đủ (Có hướng dẫn 3 loại câu)
+              </button>
+              <button
+                type="button"
+                className={`btn btn-sm ${activeJsonTab === "simple" ? "btn-primary" : "btn-ghost"}`}
+                style={{ fontSize: ".82rem", borderRadius: 8, padding: "6px 14px" }}
+                onClick={() => setActiveJsonTab("simple")}
+              >
+                🔹 Mẫu 1 đáp án A/B/C/D nhanh
+              </button>
+              <button
+                type="button"
+                className={`btn btn-sm ${activeJsonTab === "ai" ? "btn-primary" : "btn-ghost"}`}
+                style={{ fontSize: ".82rem", borderRadius: 8, padding: "6px 14px" }}
+                onClick={() => setActiveJsonTab("ai")}
+              >
+                🤖 Prompt câu lệnh cho AI (ChatGPT/Gemini)
+              </button>
+            </div>
+
+            {/* Body cuộn */}
+            <div style={{ padding: "16px 20px", overflowY: "auto", flex: 1, display: "flex", flexDirection: "column", gap: 14 }}>
+              <div>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                  <span style={{ fontSize: ".85rem", fontWeight: 600, color: "#fff" }}>
+                    {activeJsonTab === "guided"
+                      ? "Nội dung mẫu JSON có giải thích cách điền từng dòng:"
+                      : activeJsonTab === "simple"
+                      ? "Nội dung mẫu JSON câu hỏi 1 đáp án gọn nhẹ:"
+                      : "Câu lệnh mẫu để copy gửi ChatGPT / Gemini / Claude:"}
+                  </span>
+                  <span className="muted" style={{ fontSize: ".76rem" }}>Click vào ô để chọn nhanh tất cả</span>
+                </div>
+
+                <textarea
+                  readOnly
+                  rows={12}
+                  value={activeJsonTab === "guided" ? SAMPLE_JSON_GUIDED : activeJsonTab === "simple" ? SAMPLE_JSON_SIMPLE : SAMPLE_AI_PROMPT}
+                  style={{
+                    width: "100%",
+                    background: "hsla(0 0% 0% / .65)",
+                    padding: "14px 16px",
+                    borderRadius: 12,
+                    border: "1px solid var(--glass-border)",
+                    fontSize: ".82rem",
+                    lineHeight: 1.55,
+                    fontFamily: "var(--font-geist-mono), monospace",
+                    color: "#f1f5f9",
+                    resize: "vertical",
+                  }}
+                  onClick={(e) => e.target.select()}
+                />
+              </div>
+
+              {/* Nút hành động trong Modal */}
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", justifyContent: "space-between" }}>
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    style={{ fontSize: ".88rem", padding: "8px 18px", display: "inline-flex", alignItems: "center", gap: 6 }}
+                    onClick={() => {
+                      const content = activeJsonTab === "guided" ? SAMPLE_JSON_GUIDED : activeJsonTab === "simple" ? SAMPLE_JSON_SIMPLE : SAMPLE_AI_PROMPT;
+                      navigator.clipboard?.writeText(content);
+                      setCopiedModalTab(true);
+                      setTimeout(() => setCopiedModalTab(false), 2000);
+                    }}
+                  >
+                    {copiedModalTab ? "✅ Đã sao chép vào bộ nhớ!" : "📋 Sao chép mẫu này"}
+                  </button>
+                  {activeJsonTab !== "ai" && (
+                    <button
+                      type="button"
+                      className="btn btn-ghost"
+                      style={{ fontSize: ".88rem", padding: "8px 16px" }}
+                      onClick={() => {
+                        const content = activeJsonTab === "guided" ? SAMPLE_JSON_GUIDED : SAMPLE_JSON_SIMPLE;
+                        setBulk(content);
+                        setPreview(null);
+                        setShowJsonModal(false);
+                      }}
+                    >
+                      📥 Nạp vào ô nhập liệu &amp; Đóng
+                    </button>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm"
+                  onClick={() => setShowJsonModal(false)}
+                >
+                  Đóng cửa sổ
+                </button>
+              </div>
+
+              {/* Hướng dẫn chi tiết bảng các trường */}
+              <div
+                style={{
+                  background: "rgba(255,255,255,0.02)",
+                  borderRadius: 12,
+                  padding: "14px 16px",
+                  border: "1px solid var(--glass-border)",
+                  fontSize: ".84rem",
+                  lineHeight: 1.6,
+                }}
+              >
+                <div style={{ fontWeight: 700, color: "var(--accent)", marginBottom: 8, fontSize: ".9rem" }}>
+                  📖 Chi tiết ý nghĩa các trường khi điền JSON:
+                </div>
+                <div style={{ overflowX: "auto" }}>
+                  <table style={{ width: "100%", fontSize: ".82rem", borderCollapse: "collapse", textAlign: "left" }}>
+                    <thead>
+                      <tr style={{ borderBottom: "1px solid var(--glass-border)", color: "#fff" }}>
+                        <th style={{ padding: "6px 8px" }}>Trường</th>
+                        <th style={{ padding: "6px 8px" }}>Kiểu</th>
+                        <th style={{ padding: "6px 8px" }}>Cách điền &amp; Ý nghĩa</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr style={{ borderBottom: "1px solid hsla(0 0% 100% / .05)" }}>
+                        <td style={{ padding: "6px 8px" }}><code>text</code></td>
+                        <td style={{ padding: "6px 8px" }}>chuỗi (bắt buộc)</td>
+                        <td style={{ padding: "6px 8px" }}>Nội dung câu hỏi bạn muốn hỏi (chấp nhận cả <code>&quot;question&quot;</code>).</td>
+                      </tr>
+                      <tr style={{ borderBottom: "1px solid hsla(0 0% 100% / .05)" }}>
+                        <td style={{ padding: "6px 8px" }}><code>options</code></td>
+                        <td style={{ padding: "6px 8px" }}>mảng chuỗi</td>
+                        <td style={{ padding: "6px 8px" }}>Danh sách các lựa chọn đáp án: <code>[&quot;Đáp án A&quot;, &quot;Đáp án B&quot;, &quot;Đáp án C&quot;, &quot;Đáp án D&quot;]</code>.</td>
+                      </tr>
+                      <tr style={{ borderBottom: "1px solid hsla(0 0% 100% / .05)" }}>
+                        <td style={{ padding: "6px 8px" }}><code>correct</code></td>
+                        <td style={{ padding: "6px 8px" }}>số / chữ / mảng</td>
+                        <td style={{ padding: "6px 8px" }}>
+                          • <b>1 đáp án</b>: điền số index (bắt đầu từ 0: <code>0</code>=A, <code>1</code>=B, <code>2</code>=C, <code>3</code>=D) hoặc chữ <code>&quot;A&quot;</code>, <code>&quot;B&quot;</code>.<br/>
+                          • <b>Nhiều đáp án</b>: điền mảng vị trí <code>[0, 2]</code> hoặc mảng chữ <code>[&quot;A&quot;, &quot;C&quot;]</code>.<br/>
+                          • <b>Đúng / Sai</b>: điền <code>0</code> (Đúng) hoặc <code>1</code> (Sai).
+                        </td>
+                      </tr>
+                      <tr style={{ borderBottom: "1px solid hsla(0 0% 100% / .05)" }}>
+                        <td style={{ padding: "6px 8px" }}><code>type</code></td>
+                        <td style={{ padding: "6px 8px" }}>chuỗi (tùy chọn)</td>
+                        <td style={{ padding: "6px 8px" }}><code>&quot;single&quot;</code> (1 đáp án), <code>&quot;multiple&quot;</code> (nhiều đáp án), <code>&quot;truefalse&quot;</code> (Đúng/Sai). Nếu bỏ trống, hệ thống tự động suy luận.</td>
+                      </tr>
+                      <tr>
+                        <td style={{ padding: "6px 8px" }}><code>explanation</code></td>
+                        <td style={{ padding: "6px 8px" }}>chuỗi (tùy chọn)</td>
+                        <td style={{ padding: "6px 8px" }}>Lời giải thích chi tiết vì sao đáp án đúng khi người thi xem lại kết quả bài làm.</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                <div style={{ marginTop: 12, padding: "10px 12px", background: "rgba(99,102,241,0.08)", borderRadius: 8, border: "1px solid rgba(99,102,241,0.2)" }}>
+                  💡 <b>Mẹo dùng AI (ChatGPT, Claude, Gemini):</b> Chuyển sang tab <b>&quot;Prompt câu lệnh cho AI&quot;</b>, bấm sao chép và gửi cho AI kèm chủ đề của bạn. AI sẽ tạo 10-50 câu hỏi đúng chuẩn JSON chỉ trong vài giây! Sau đó bạn chỉ cần dán kết quả vào ô nhập liệu bên dưới là xong.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </form>
   );
 }
