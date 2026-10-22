@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { saveItem } from "@/lib/db";
 import { QUESTION_TYPES, TF_OPTIONS, newQuestion, validateQuiz } from "@/lib/quiz";
-import { parseQuizInput, SAMPLE_QUIZ_TEXT } from "@/lib/quizParser";
+import { parseQuizInput, SAMPLE_QUIZ_TEXT, SAMPLE_QUIZ_JSON } from "@/lib/quizParser";
 import { isImageIcon } from "@/lib/presets";
 
 const csv = (s) => s.split(",").map((x) => x.trim()).filter(Boolean);
@@ -25,6 +25,7 @@ export default function QuizEditor({ item, topics, onDone }) {
   const [errors, setErrors] = useState([]);
   const [bulk, setBulk] = useState("");
   const [preview, setPreview] = useState(null);
+  const [copiedJson, setCopiedJson] = useState(false);
 
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
   const num = (k) => (e) => setF({ ...f, [k]: Math.max(0, parseInt(e.target.value, 10) || 0) });
@@ -160,15 +161,104 @@ export default function QuizEditor({ item, topics, onDone }) {
       <details className="quiz-bulk">
         <summary>⚡ Nhập hàng loạt từ văn bản / JSON</summary>
         <p className="muted" style={{ fontSize: ".85rem", margin: "10px 0" }}>
-          Mỗi câu gồm <code>Câu N: ...</code>, các đáp án <code>A. ...</code>, dòng <code>Đáp án: B</code> (nhiều đáp án: <code>A, C</code>; Đúng/Sai: bỏ trống lựa chọn và ghi <code>Đáp án: Đúng</code>) và <code>Giải thích: ...</code>. Cũng nhận mảng JSON.
+          Hỗ trợ nhập hàng loạt câu hỏi bằng <b>văn bản thông thường</b> (dạng <code>Câu 1:... A. B. C. Đáp án:...</code>) hoặc <b>chuỗi JSON chuẩn</b>.
         </p>
+
+        {/* Hướng dẫn chi tiết cấu trúc JSON */}
+        <details style={{ background: "hsla(0 0% 100% / .03)", borderRadius: 12, padding: "12px 16px", margin: "12px 0", border: "1px solid var(--glass-border)" }}>
+          <summary style={{ cursor: "pointer", fontWeight: 600, color: "var(--accent)", display: "flex", alignItems: "center", gap: 6, fontSize: ".9rem" }}>
+            <span>📖 Hướng dẫn chi tiết cấu trúc viết JSON tạo bộ đề</span>
+            <span className="badge" style={{ fontSize: ".7rem", marginLeft: "auto" }}>Xem quy chuẩn</span>
+          </summary>
+          <div style={{ marginTop: 12, fontSize: ".85rem", lineHeight: 1.6 }}>
+            <p style={{ margin: "6px 0 10px" }}>
+              Cấu trúc JSON là một mảng các câu hỏi <code>[...]</code> hoặc một đối tượng có trường <code>&#123; &quot;questions&quot;: [...] &#125;</code>:
+            </p>
+            <div style={{ overflowX: "auto", marginBottom: 12 }}>
+              <table style={{ width: "100%", fontSize: ".82rem", borderCollapse: "collapse", textAlign: "left" }}>
+                <thead>
+                  <tr style={{ borderBottom: "1px solid var(--glass-border)", color: "var(--accent)" }}>
+                    <th style={{ padding: "6px 8px" }}>Trường</th>
+                    <th style={{ padding: "6px 8px" }}>Kiểu</th>
+                    <th style={{ padding: "6px 8px" }}>Mô tả &amp; Ví dụ</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr style={{ borderBottom: "1px solid hsla(0 0% 100% / .05)" }}>
+                    <td style={{ padding: "6px 8px" }}><code>text</code></td>
+                    <td style={{ padding: "6px 8px" }}>string *</td>
+                    <td style={{ padding: "6px 8px" }}>Nội dung câu hỏi (chấp nhận cả <code>&quot;question&quot;</code> hoặc <code>&quot;text&quot;</code>, hỗ trợ Markdown).</td>
+                  </tr>
+                  <tr style={{ borderBottom: "1px solid hsla(0 0% 100% / .05)" }}>
+                    <td style={{ padding: "6px 8px" }}><code>options</code></td>
+                    <td style={{ padding: "6px 8px" }}>array *</td>
+                    <td style={{ padding: "6px 8px" }}>Mảng các đáp án lựa chọn, ví dụ: <code>[&quot;A. ...&quot;, &quot;B. ...&quot;, &quot;C. ...&quot;, &quot;D. ...&quot;]</code>.</td>
+                  </tr>
+                  <tr style={{ borderBottom: "1px solid hsla(0 0% 100% / .05)" }}>
+                    <td style={{ padding: "6px 8px" }}><code>correct</code></td>
+                    <td style={{ padding: "6px 8px" }}>number / string / array *</td>
+                    <td style={{ padding: "6px 8px" }}>
+                      Đáp án đúng (chấp nhận cả trường <code>&quot;answer&quot;</code>):<br/>
+                      • <b>1 đáp án</b>: số index (bắt đầu từ 0: <code>0</code>=A, <code>1</code>=B, <code>2</code>=C, <code>3</code>=D) hoặc chữ cái <code>&quot;A&quot;</code>, <code>&quot;B&quot;</code>.<br/>
+                      • <b>Nhiều đáp án</b>: mảng số <code>[0, 2]</code> hoặc mảng chữ <code>[&quot;A&quot;, &quot;C&quot;]</code>.<br/>
+                      • <b>Đúng / Sai</b>: số <code>0</code> (Đúng) / <code>1</code> (Sai), hoặc boolean <code>true</code>/<code>false</code>.
+                    </td>
+                  </tr>
+                  <tr style={{ borderBottom: "1px solid hsla(0 0% 100% / .05)" }}>
+                    <td style={{ padding: "6px 8px" }}><code>type</code></td>
+                    <td style={{ padding: "6px 8px" }}>string</td>
+                    <td style={{ padding: "6px 8px" }}>Tùy chọn: <code>&quot;single&quot;</code> (1 đáp án), <code>&quot;multiple&quot;</code> (nhiều đáp án), <code>&quot;truefalse&quot;</code> (Đúng/Sai).</td>
+                  </tr>
+                  <tr>
+                    <td style={{ padding: "6px 8px" }}><code>explanation</code></td>
+                    <td style={{ padding: "6px 8px" }}>string</td>
+                    <td style={{ padding: "6px 8px" }}>Lời giải thích chi tiết khi người học xem kết quả bài thi.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+              <span className="muted" style={{ fontSize: ".8rem" }}>Mẫu JSON hoàn chỉnh:</span>
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                style={{ fontSize: ".75rem", padding: "2px 8px" }}
+                onClick={() => {
+                  navigator.clipboard?.writeText(SAMPLE_QUIZ_JSON);
+                  setCopiedJson(true);
+                  setTimeout(() => setCopiedJson(false), 2000);
+                }}
+              >
+                {copiedJson ? "✅ Đã sao chép!" : "📋 Sao chép mẫu JSON"}
+              </button>
+            </div>
+            <pre style={{
+              background: "hsla(0 0% 0% / .4)",
+              padding: 12,
+              borderRadius: 8,
+              border: "1px solid var(--glass-border)",
+              fontSize: ".78rem",
+              maxHeight: 180,
+              overflowY: "auto",
+              fontFamily: "var(--font-geist-mono), monospace",
+            }}>
+              <code>{SAMPLE_QUIZ_JSON}</code>
+            </pre>
+            <p className="muted" style={{ fontSize: ".78rem", marginTop: 8 }}>
+              💡 <b>Mẹo dùng AI (ChatGPT, Claude, Gemini):</b> Bạn có thể bấm nút &quot;Sao chép mẫu JSON&quot; ở trên, gửi cho AI với câu lệnh: <i>&quot;Hãy tạo cho tôi 10 câu hỏi trắc nghiệm về [Chủ đề của bạn] theo đúng cấu trúc JSON sau: [Dán mẫu vào]&quot;</i> sau đó dán kết quả vào ô bên dưới!
+            </p>
+          </div>
+        </details>
+
         <textarea
           rows={10} value={bulk} onChange={(e) => { setBulk(e.target.value); setPreview(null); }}
-          placeholder="Dán nội dung vào đây..." style={{ fontFamily: "var(--font-geist-mono), monospace", fontSize: ".88rem" }}
+          placeholder="Dán nội dung văn bản hoặc mã JSON vào đây..." style={{ fontFamily: "var(--font-geist-mono), monospace", fontSize: ".88rem" }}
         />
         <div className="qrow" style={{ gap: 8, marginTop: 10, flexWrap: "wrap" }}>
-          <button type="button" className="btn btn-ghost btn-sm" onClick={() => { setBulk(SAMPLE_QUIZ_TEXT); setPreview(null); }}>Chèn đề mẫu</button>
-          <button type="button" className="btn btn-primary btn-sm" disabled={!bulk.trim()} onClick={runPreview}>Xem trước</button>
+          <button type="button" className="btn btn-ghost btn-sm" onClick={() => { setBulk(SAMPLE_QUIZ_TEXT); setPreview(null); }}>📝 Chèn mẫu văn bản</button>
+          <button type="button" className="btn btn-ghost btn-sm" onClick={() => { setBulk(SAMPLE_QUIZ_JSON); setPreview(null); }}>📋 Chèn mẫu JSON</button>
+          <button type="button" className="btn btn-primary btn-sm" disabled={!bulk.trim()} onClick={runPreview}>🔍 Xem trước &amp; Kiểm tra</button>
         </div>
         {preview && (
           <div style={{ marginTop: 14 }}>
