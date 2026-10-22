@@ -260,7 +260,7 @@ export default function PostEditor({ item, onDone }) {
                 <div className="meta" style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 8, fontSize: ".8rem", color: "var(--accent)" }}>
                   {f.membersOnly && <span className="badge draft">🔒 Chỉ thành viên</span>}
                   <span>{f.category || "Chưa phân loại"}</span>
-                  <span>· {fmtDate(Date.now())}</span>
+                  <span>· {fmtDate(f.createdAt || undefined)}</span>
                   <span>· {readTimeMinutes} phút đọc</span>
                 </div>
                 <h1 style={{ fontSize: "1.7rem", marginTop: 4 }}>{f.title || "Tiêu đề bài viết"}</h1>

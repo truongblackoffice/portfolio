@@ -1,16 +1,41 @@
 "use client";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { fmtDate } from "@/lib/db";
 import { renderIcon } from "@/lib/presets";
 
+const OPTIMIZED_HOSTS = [
+  "firebasestorage.googleapis.com",
+  "lh3.googleusercontent.com",
+  "avatars.githubusercontent.com",
+  "images.unsplash.com",
+];
+
+function canOptimize(src) {
+  if (!src || typeof src !== "string") return false;
+  if (src.startsWith("/")) return true;
+  try {
+    const host = new URL(src).hostname;
+    return OPTIMIZED_HOSTS.some((h) => host === h || host.endsWith("." + h));
+  } catch {
+    return false;
+  }
+}
+
 export function PostCard({ p }) {
   return (
     <Link href={`/blog/${p.slug || p.id}`} className="card glass reveal" style={{ padding: p.cover ? 0 : 26, overflow: "hidden" }}>
       {p.cover && (
-        <div style={{ height: 160, width: "100%", overflow: "hidden" }}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={p.cover} alt={p.title} style={{ width: "100%", height: "100%", objectFit: "cover", transition: ".3s" }} />
+        <div style={{ height: 160, width: "100%", overflow: "hidden", position: "relative" }}>
+          <Image
+            src={p.cover}
+            alt={p.title || "Ảnh bài viết"}
+            fill
+            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+            style={{ objectFit: "cover", transition: ".3s" }}
+            unoptimized={!canOptimize(p.cover)}
+          />
         </div>
       )}
       <div style={{ padding: p.cover ? 20 : 0, display: "flex", flexDirection: "column", gap: 10, flex: 1 }}>

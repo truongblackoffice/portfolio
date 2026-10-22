@@ -93,7 +93,7 @@ export default function AdminMedia() {
 
       {/* Danh sách Media Grid */}
       {(!mediaList || mediaList.length === 0) ? (
-        <div className="empty">Thư viện trống. Hãy bấm "+ Tải ảnh lên" hoặc dán URL ảnh để lưu trữ.</div>
+        <div className="empty">Thư viện trống. Hãy bấm &quot;+ Tải ảnh lên&quot; hoặc dán URL ảnh để lưu trữ.</div>
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 18 }}>
           {mediaList.map((m) => (

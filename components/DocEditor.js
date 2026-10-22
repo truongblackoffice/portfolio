@@ -80,7 +80,7 @@ export default function DocEditor({ item, onDone }) {
     ...f,
     id: f.id || "preview-id",
     tags: csv(f.tagsText),
-    createdAt: f.createdAt || Date.now(),
+    createdAt: f.createdAt || 0,
   };
 
   return (

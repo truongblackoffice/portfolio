@@ -1,4 +1,5 @@
 "use client";
+import Image from "next/image";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -8,6 +9,24 @@ import useAsync from "@/lib/useAsync";
 import ShareBar from "@/components/ShareBar";
 import Comments from "@/components/Comments";
 import ScrollToTop from "@/components/ScrollToTop";
+
+const OPTIMIZED_HOSTS = [
+  "firebasestorage.googleapis.com",
+  "lh3.googleusercontent.com",
+  "avatars.githubusercontent.com",
+  "images.unsplash.com",
+];
+
+function canOptimize(src) {
+  if (!src || typeof src !== "string") return false;
+  if (src.startsWith("/")) return true;
+  try {
+    const host = new URL(src).hostname;
+    return OPTIMIZED_HOSTS.some((h) => host === h || host.endsWith("." + h));
+  } catch {
+    return false;
+  }
+}
 
 export default function PostDetail() {
   const { slug } = useParams();
@@ -57,9 +76,16 @@ export default function PostDetail() {
 
         {/* Ảnh bìa bài viết nếu có */}
         {post.cover && (
-          <div style={{ height: "clamp(220px, 35vw, 380px)", width: "100%", overflow: "hidden", borderRadius: 16, marginTop: 18, border: "1px solid var(--glass-border)" }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={post.cover} alt={post.title} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+          <div style={{ height: "clamp(220px, 35vw, 380px)", width: "100%", overflow: "hidden", borderRadius: 16, marginTop: 18, border: "1px solid var(--glass-border)", position: "relative" }}>
+            <Image
+              src={post.cover}
+              alt={post.title || "Ảnh bài viết"}
+              fill
+              priority
+              sizes="(max-width: 1024px) 100vw, 860px"
+              style={{ width: "100%", height: "100%", objectFit: "cover" }}
+              unoptimized={!canOptimize(post.cover)}
+            />
           </div>
         )}
 

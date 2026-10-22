@@ -1,8 +1,8 @@
 "use client";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { getItem, listItems, watchAuth, saveAttempt } from "@/lib/db";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { getItem, listItems, watchAuth, saveAttempt, getQuizLeaderboard } from "@/lib/db";
 import useAsync from "@/lib/useAsync";
 import { buildSession, scoreSession, gradeQuestion, formatDuration, QUESTION_TYPES, getExamLimitInfo, recordExamAttempt } from "@/lib/quiz";
 import { useSite } from "@/lib/SiteContext";
@@ -10,6 +10,27 @@ import { renderIcon } from "@/lib/presets";
 import { Md, ReviewOptions, SolutionItem, letterOf } from "@/components/QuizParts";
 
 const MODE_LABEL = { practice: "Ôn tập", exam: "Thi thử" };
+
+function subscribeStorage(callback) {
+  window.addEventListener("storage", callback);
+  return () => window.removeEventListener("storage", callback);
+}
+
+function getDraftSnapshot(quizId) {
+  if (typeof window === "undefined" || !quizId) return "";
+  try {
+    const raw = sessionStorage.getItem("quiz_draft_" + quizId);
+    if (!raw) return "";
+    const parsed = JSON.parse(raw);
+    if (parsed?.timestamp && Date.now() - parsed.timestamp > 12 * 3600 * 1000) {
+      sessionStorage.removeItem("quiz_draft_" + quizId);
+      return "";
+    }
+    return raw;
+  } catch {
+    return "";
+  }
+}
 
 export default function QuizPage() {
   const { id } = useParams();
@@ -38,21 +59,40 @@ export default function QuizPage() {
   const { site } = useSite();
   const maxPerHour = quiz?.maxExamPerHour !== undefined ? quiz.maxExamPerHour : (site?.defaultMaxExamPerHour ?? 5);
 
-  const [limitInfo, setLimitInfo] = useState({ limited: false, remaining: 5, max: 5, isBlocked: false, nextAvailableMin: 0 });
+  const [, setAttemptTick] = useState(0);
+  const limitInfo = quiz?.id
+    ? getExamLimitInfo(quiz.id, maxPerHour)
+    : { limited: false, remaining: 5, max: 5, isBlocked: false, nextAvailableMin: 0 };
   const [blockedModal, setBlockedModal] = useState(false);
 
-  const updateLimit = useCallback(() => {
-    if (!quiz?.id) return null;
-    const info = getExamLimitInfo(quiz.id, maxPerHour);
-    setLimitInfo(info);
-    return info;
-  }, [quiz?.id, maxPerHour]);
+  const [phase, setPhase] = useState(() => (search.get("mode") === "study" ? "study" : "start"));
+  const [leaderboard, setLeaderboard] = useState([]);
+  const [showLeaderboard, setShowLeaderboard] = useState(false);
+
+  // Quản lý lưu nháp bài làm tự động (Auto-save draft)
+  const rawDraft = useSyncExternalStore(
+    subscribeStorage,
+    () => getDraftSnapshot(id),
+    () => ""
+  );
+  const [dismissedDraft, setDismissedDraft] = useState(false);
+
+  const draft = useMemo(() => {
+    if (!rawDraft || dismissedDraft) return null;
+    try {
+      const d = JSON.parse(rawDraft);
+      if (d && d.session?.length) {
+        return d;
+      }
+    } catch {}
+    return null;
+  }, [rawDraft, dismissedDraft]);
 
   useEffect(() => {
-    updateLimit();
-  }, [updateLimit]);
-
-  const [phase, setPhase] = useState(() => (search.get("mode") === "study" ? "study" : "start"));
+    if (quiz?.id) {
+      getQuizLeaderboard(quiz.id).then((l) => setLeaderboard(l || []));
+    }
+  }, [quiz?.id, phase]);
   const [mode, setMode] = useState("practice");
   const [optsOver, setOptsOver] = useState({});
   const opts = {
@@ -77,13 +117,13 @@ export default function QuizPage() {
 
   const begin = (m, source = quiz, retry = false) => {
     if (m === "exam") {
-      const info = updateLimit() || limitInfo;
+      const info = getExamLimitInfo(quiz.id, maxPerHour);
       if (info?.isBlocked) {
         setBlockedModal(true);
         return;
       }
       recordExamAttempt(quiz.id);
-      updateLimit();
+      setAttemptTick((t) => t + 1);
     }
     const n = source.questions?.length || 0;
     const count = retry || opts.count >= n ? 0 : opts.count;
@@ -98,9 +138,42 @@ export default function QuizPage() {
       deadline.current = Date.now() + quiz.timeLimitMin * 60000;
       setRemaining(quiz.timeLimitMin * 60);
     } else setRemaining(null);
+    setDismissedDraft(true);
     setMode(m);
     setPhase("run");
     window.scrollTo({ top: 0 });
+  };
+
+  const resumeDraft = () => {
+    if (!draft) return;
+    finishedRef.current = false;
+    setSession(draft.session);
+    setAnswers(draft.answers || {});
+    setChecked({});
+    setIdx(draft.idx || 0);
+    setMode(draft.mode || "practice");
+    startedAt.current = draft.startedAt || Date.now();
+    if (draft.mode === "exam" && draft.deadline) {
+      deadline.current = draft.deadline;
+      setRemaining(Math.max(0, Math.ceil((draft.deadline - Date.now()) / 1000)));
+    } else {
+      setRemaining(null);
+    }
+    try {
+      sessionStorage.removeItem("quiz_draft_" + id);
+      window.dispatchEvent(new Event("storage"));
+    } catch {}
+    setDismissedDraft(true);
+    setPhase("run");
+    window.scrollTo({ top: 0 });
+  };
+
+  const discardDraft = () => {
+    try {
+      sessionStorage.removeItem("quiz_draft_" + id);
+      window.dispatchEvent(new Event("storage"));
+    } catch {}
+    setDismissedDraft(true);
   };
 
   const renderBlockedModal = () => {
@@ -133,6 +206,11 @@ export default function QuizPage() {
   const finish = useCallback(() => {
     if (finishedRef.current || !quiz) return;
     finishedRef.current = true;
+    try {
+      sessionStorage.removeItem("quiz_draft_" + quiz.id);
+      window.dispatchEvent(new Event("storage"));
+    } catch {}
+    setDismissedDraft(true);
     const score = scoreSession(session, answers);
     const durationSec = Math.round((Date.now() - startedAt.current) / 1000);
     const passed = score.percent >= (quiz.passPercent ?? 50);
@@ -147,6 +225,25 @@ export default function QuizPage() {
       });
     }
   }, [quiz, session, answers, mode, user, isRetry]);
+
+  // Tự động lưu nháp vào sessionStorage khi đang làm bài
+  useEffect(() => {
+    if (phase !== "run" || !session.length || !quiz?.id) return;
+    try {
+      const payload = {
+        quizId: quiz.id,
+        mode,
+        session,
+        answers,
+        idx,
+        remaining,
+        deadline: deadline.current,
+        startedAt: startedAt.current,
+        timestamp: Date.now(),
+      };
+      sessionStorage.setItem("quiz_draft_" + quiz.id, JSON.stringify(payload));
+    } catch {}
+  }, [phase, session, answers, idx, remaining, mode, quiz?.id]);
 
   // Đồng hồ đếm ngược dựa trên mốc thời gian thật để không bị lệch khi tab bị làm chậm
   const timed = remaining !== null;
@@ -270,6 +367,44 @@ export default function QuizPage() {
           <h1 style={{ fontSize: "clamp(1.8rem, 4vw, 2.5rem)", margin: "12px 0" }}>{quiz.title}</h1>
           {quiz.description && <p className="muted" style={{ marginBottom: 18 }}>{quiz.description}</p>}
 
+          {draft && (
+            <div
+              className="glass reveal"
+              style={{
+                padding: "16px 20px",
+                borderRadius: 16,
+                margin: "18px 0",
+                border: "1px solid rgba(59, 130, 246, 0.4)",
+                background: "rgba(59, 130, 246, 0.08)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 14,
+                flexWrap: "wrap",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <span style={{ fontSize: "1.8rem" }}>📝</span>
+                <div>
+                  <div style={{ fontWeight: 600, fontSize: "0.98rem" }}>
+                    Bạn có bài làm dở chưa nộp! ({Object.keys(draft.answers || {}).length}/{draft.session?.length || 0} câu đã trả lời)
+                  </div>
+                  <div className="muted" style={{ fontSize: ".84rem", marginTop: 2 }}>
+                    Chế độ: <b>{MODE_LABEL[draft.mode] || draft.mode}</b> · Lưu lúc {new Date(draft.timestamp).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}
+                  </div>
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <button type="button" className="btn btn-ghost btn-sm" onClick={discardDraft}>
+                  Bỏ qua
+                </button>
+                <button type="button" className="btn btn-primary btn-sm" onClick={resumeDraft}>
+                  ▶ Tiếp tục làm bài
+                </button>
+              </div>
+            </div>
+          )}
+
           {result && (
             <div
               className="glass reveal"
@@ -379,6 +514,85 @@ export default function QuizPage() {
               <input type="checkbox" checked={opts.shuffleOptions} onChange={(e) => setOptsOver((o) => ({ ...o, shuffleOptions: e.target.checked }))} />
               Xáo trộn đáp án
             </label>
+          </div>
+
+          {/* Bảng xếp hạng (Leaderboard) */}
+          <div style={{ marginTop: 28, paddingTop: 20, borderTop: "1px solid var(--border)" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+              <h3 style={{ fontSize: "1.05rem", margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
+                <span>🏆</span> Bảng xếp hạng học viên ({leaderboard.length})
+              </h3>
+              {leaderboard.length > 3 && (
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm"
+                  onClick={() => setShowLeaderboard((s) => !s)}
+                  style={{ fontSize: "0.82rem" }}
+                >
+                  {showLeaderboard ? "Thu gọn ▲" : "Xem tất cả Top 10 ▼"}
+                </button>
+              )}
+            </div>
+
+            {leaderboard.length === 0 ? (
+              <p className="muted" style={{ fontSize: ".86rem", margin: 0 }}>
+                Chưa có lượt thi nào được ghi nhận. Hãy là người đầu tiên chinh phục bộ đề này! 🚀
+              </p>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {leaderboard.slice(0, showLeaderboard ? 10 : 3).map((item, i) => {
+                  const medal = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `#${i + 1}`;
+                  const isTop3 = i < 3;
+                  return (
+                    <div
+                      key={item.id || i}
+                      className="glass"
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        padding: "10px 14px",
+                        borderRadius: 12,
+                        gap: 12,
+                        background: isTop3 ? "rgba(234, 179, 8, 0.06)" : "var(--surface)",
+                        border: isTop3 ? "1px solid rgba(234, 179, 8, 0.25)" : "1px solid var(--border)",
+                      }}
+                    >
+                      <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+                        <span style={{ fontSize: isTop3 ? "1.2rem" : "0.9rem", fontWeight: 700, width: 28, textAlign: "center" }}>
+                          {medal}
+                        </span>
+                        {item.userPhoto ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={item.userPhoto}
+                            alt={item.userName || "Avatar"}
+                            style={{ width: 32, height: 32, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }}
+                          />
+                        ) : (
+                          <div style={{ width: 32, height: 32, borderRadius: "50%", background: "var(--accent)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 600, fontSize: "0.85rem", flexShrink: 0 }}>
+                            {(item.userName || "U").charAt(0).toUpperCase()}
+                          </div>
+                        )}
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ fontWeight: 600, fontSize: "0.92rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            {item.userName || "Học viên"}
+                          </div>
+                          <div className="muted" style={{ fontSize: "0.78rem" }}>
+                            ⏱️ {formatDuration(item.durationSec || 0)} · {item.correctCount || 0}/{item.total || total} câu · {item.mode === "exam" ? "Thi thử" : "Ôn tập"}
+                          </div>
+                        </div>
+                      </div>
+                      <div style={{ textAlign: "right", flexShrink: 0 }}>
+                        <span style={{ fontWeight: 700, fontSize: "1.1rem", color: item.percent >= (quiz.passPercent ?? 50) ? "#10b981" : "#f59e0b" }}>
+                          {item.percent}%
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
           {!user && (
             <p className="muted" style={{ fontSize: ".85rem", marginTop: 16 }}>

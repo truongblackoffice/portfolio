@@ -57,10 +57,37 @@ export const metadata = {
   },
 };
 
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebSite",
+      "@id": "https://manhtruong.io.vn/#website",
+      "url": "https://manhtruong.io.vn",
+      "name": "Nguyễn Mạnh Trường - Portfolio & Kho kiến thức",
+      "description": "Trang cá nhân, blog chia sẻ kiến thức công nghệ, lập trình và thư viện tài liệu trực tuyến.",
+      "inLanguage": "vi-VN",
+    },
+    {
+      "@type": "Person",
+      "@id": "https://manhtruong.io.vn/#person",
+      "name": "Nguyễn Mạnh Trường",
+      "url": "https://manhtruong.io.vn",
+      "image": "https://manhtruong.io.vn/avatar.jpg",
+      "jobTitle": "Full-stack Developer",
+      "description": "Lập trình viên Full-stack chuyên về Next.js, React, Node.js và Firebase.",
+    },
+  ],
+};
+
 export default function RootLayout({ children }) {
   return (
     <html lang="vi" suppressHydrationWarning>
       <head>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
         <script
           dangerouslySetInnerHTML={{
             __html: `(function(){try{if(typeof window==='undefined')return;window.addEventListener('error',function(e){e.preventDefault&&e.preventDefault();e.stopImmediatePropagation&&e.stopImmediatePropagation();return true;},true);window.addEventListener('unhandledrejection',function(e){e.preventDefault&&e.preventDefault();e.stopImmediatePropagation&&e.stopImmediatePropagation();return true;},true);document.addEventListener('keydown',function(e){if(e.key==='F12'||e.keyCode===123){e.preventDefault();e.stopPropagation();return false;}var m=e.ctrlKey||e.metaKey;if(e.shiftKey&&m&&['I','i','J','j','C','c','K','k'].indexOf(e.key)>-1){e.preventDefault();e.stopPropagation();return false;}if(m&&['U','u','S','s'].indexOf(e.key)>-1){e.preventDefault();e.stopPropagation();return false;}},true);document.addEventListener('contextmenu',function(e){e.preventDefault();return false;},true);var n=function(){};['log','debug','info','warn','error','table','trace','dir'].forEach(function(k){try{window.console[k]=n;}catch(x){}});if(window.console&&window.console.clear){try{window.console.clear();}catch(x){}}}catch(e){}})();`,

@@ -275,8 +275,8 @@ export default function ProfilePage() {
           </p>
 
           <div style={{ display: "flex", gap: 16, flexWrap: "wrap", fontSize: ".82rem", color: "var(--muted)" }}>
-            <span>📅 Tham gia: {fmtDate(userData?.createdAt || Date.now())}</span>
-            <span>⏱️ Hoạt động gần nhất: {fmtDate(userData?.lastLogin || Date.now())}</span>
+            <span>📅 Tham gia: {userData?.createdAt ? fmtDate(userData.createdAt) : "Mới tham gia"}</span>
+            <span>⏱️ Hoạt động gần nhất: {userData?.lastLogin ? fmtDate(userData.lastLogin) : "Vừa xong"}</span>
           </div>
         </div>
 

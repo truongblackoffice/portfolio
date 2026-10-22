@@ -10,25 +10,25 @@ export default function AdminProfileVisual() {
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
   const [newSkill, setNewSkill] = useState("");
+  const [syncedKey, setSyncedKey] = useState(null);
 
-  useEffect(() => {
-    if (data) {
-      setF({
-        name: data.name || "",
-        title: data.title || "",
-        bio: data.bio || "",
-        avatar: data.avatar || "/avatar.jpg",
-        skills: data.skills || [],
-        experience: data.experience || [],
-        socials: {
-          github: data.socials?.github || "",
-          linkedin: data.socials?.linkedin || "",
-          facebook: data.socials?.facebook || "",
-          email: data.socials?.email || "",
-        },
-      });
-    }
-  }, [data]);
+  if (data && syncedKey !== (data.name || "init")) {
+    setSyncedKey(data.name || "init");
+    setF({
+      name: data.name || "",
+      title: data.title || "",
+      bio: data.bio || "",
+      avatar: data.avatar || "/avatar.jpg",
+      skills: data.skills || [],
+      experience: data.experience || [],
+      socials: {
+        github: data.socials?.github || "",
+        linkedin: data.socials?.linkedin || "",
+        facebook: data.socials?.facebook || "",
+        email: data.socials?.email || "",
+      },
+    });
+  }
 
   if (!f) return <div className="empty">Đang tải hồ sơ...</div>;
 
@@ -226,7 +226,7 @@ export default function AdminProfileVisual() {
             </div>
           </div>
         ))}
-        {!f.experience.length && <div className="muted" style={{ fontStyle: "italic" }}>Chưa có mốc kinh nghiệm nào. Bấm nút "+ Thêm mốc kinh nghiệm" để tạo mới.</div>}
+        {!f.experience.length && <div className="muted" style={{ fontStyle: "italic" }}>Chưa có mốc kinh nghiệm nào. Bấm nút &quot;+ Thêm mốc kinh nghiệm&quot; để tạo mới.</div>}
       </div>
 
       {/* Mạng xã hội */}
