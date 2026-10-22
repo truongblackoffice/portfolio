@@ -39,6 +39,20 @@ service cloud.firestore {
       allow read: if true;
       allow write: if isEditor();
     }
+    match /quizTopics/{id} {
+      allow read: if true;
+      allow write: if isEditor();
+    }
+    match /quizzes/{id} {
+      allow read: if isEditor()
+        || (resource.data.published == true && (signedIn() || resource.data.membersOnly == false));
+      allow write: if isEditor();
+    }
+    match /quizAttempts/{id} {
+      allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
+      allow read: if signedIn() && (resource.data.uid == request.auth.uid || isAdmin());
+      allow update, delete: if isAdmin();
+    }
     match /media/{id} {
       allow read: if isEditor();
       allow write: if isEditor();

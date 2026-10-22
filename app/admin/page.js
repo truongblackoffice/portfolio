@@ -15,6 +15,7 @@ import AdminProfileVisual from "@/components/AdminProfileVisual";
 import AdminBackup from "@/components/AdminBackup";
 import AdminMedia from "@/components/AdminMedia";
 import AdminCategories from "@/components/AdminCategories";
+import AdminQuizzes from "@/components/AdminQuizzes";
 import AdminAnalytics from "@/components/AdminAnalytics";
 
 // [id, nhãn, chỉ admin?]
@@ -23,6 +24,7 @@ const TABS = [
   ["posts", "✍️ Bài viết"],
   ["documents", "📁 Tài liệu"],
   ["categories", "🏷️ Danh mục"],
+  ["quizzes", "🧠 Trắc nghiệm"],
   ["media", "🖼️ Thư viện Media"],
   ["profile", "👤 Hồ sơ cá nhân", true],
   ["appearance", "🎨 Giao diện & Banner", true],
@@ -97,6 +99,7 @@ export default function Admin() {
       {tab === "posts" && <Posts />}
       {tab === "documents" && <Docs />}
       {tab === "categories" && <AdminCategories />}
+      {tab === "quizzes" && <AdminQuizzes />}
       {tab === "media" && <AdminMedia />}
       {isAdmin && tab === "profile" && <AdminProfileVisual />}
       {isAdmin && tab === "appearance" && <Appearance />}

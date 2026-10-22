@@ -9,7 +9,7 @@ import ThemeToggle from "./ThemeToggle";
 
 const links = [
   ["/", "Trang chủ"], ["/about", "Giới thiệu"], ["/blog", "Bài viết"],
-  ["/documents", "Tài liệu"], ["/contact", "Liên hệ"],
+  ["/documents", "Tài liệu"], ["/quiz", "Ôn tập"], ["/contact", "Liên hệ"],
 ];
 const adminLink = ["/admin", "Quản trị"];
 

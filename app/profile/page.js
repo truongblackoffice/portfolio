@@ -7,6 +7,7 @@ import {
   updateUserProfile, changeUserPassword, sendUserPasswordReset,
   getUserData, getUserComments, removeComment, uploadFile, isDemo,
 } from "@/lib/db";
+import QuizHistory from "@/components/QuizHistory";
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -322,7 +323,16 @@ export default function ProfilePage() {
         >
           💬 Bình luận của tôi ({comments.length})
         </a>
+        <a
+          href="#"
+          className={tab === "quizzes" ? "active" : ""}
+          onClick={(e) => { e.preventDefault(); setTab("quizzes"); setMsg({ text: "", type: "" }); }}
+        >
+          🧠 Lịch sử ôn tập
+        </a>
       </div>
+
+      {tab === "quizzes" && <QuizHistory uid={user.uid || "demo"} />}
 
       {/* TAB 1: THÔNG TIN CÁ NHÂN */}
       {tab === "info" && (

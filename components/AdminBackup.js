@@ -11,12 +11,14 @@ export default function AdminBackup() {
   const handleExport = async () => {
     setBusy(true); setMsg(""); setErr("");
     try {
-      const [profile, posts, documents, messages, users] = await Promise.all([
+      const [profile, posts, documents, messages, users, quizzes, quizTopics] = await Promise.all([
         getProfile(),
         listItems("posts"),
         listItems("documents"),
         listItems("messages"),
         listItems("users"),
+        listItems("quizzes"),
+        listItems("quizTopics"),
       ]);
 
       const backupData = {
@@ -27,6 +29,8 @@ export default function AdminBackup() {
         documents,
         messages,
         users,
+        quizzes,
+        quizTopics,
       };
 
       const jsonStr = JSON.stringify(backupData, null, 2);
@@ -41,7 +45,7 @@ export default function AdminBackup() {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
 
-      setMsg(`✅ Xuất thành công file "${filename}" (${posts.length} bài viết, ${documents.length} tài liệu)!`);
+      setMsg(`✅ Xuất thành công file "${filename}" (${posts.length} bài viết, ${documents.length} tài liệu, ${quizzes.length} bộ đề)!`);
     } catch (e) {
       setErr("Lỗi khi xuất dữ liệu: " + e.message);
     }
@@ -85,6 +89,18 @@ export default function AdminBackup() {
       if (Array.isArray(data.messages)) {
         for (const m of data.messages) {
           await saveItem("messages", m);
+        }
+      }
+
+      // Khôi phục chủ đề và bộ đề trắc nghiệm
+      if (Array.isArray(data.quizTopics)) {
+        for (const t of data.quizTopics) {
+          await saveItem("quizTopics", t);
+        }
+      }
+      if (Array.isArray(data.quizzes)) {
+        for (const q of data.quizzes) {
+          await saveItem("quizzes", q);
         }
       }
 

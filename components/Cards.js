@@ -48,6 +48,44 @@ export function DocCard({ d }) {
   );
 }
 
+/* Thẻ chủ đề ôn tập */
+export function TopicCard({ g }) {
+  const t = g.topic;
+  return (
+    <Link href={`/quiz/topic/${t.id}`} className="card glass reveal quiz-topic" style={{ "--topic": t.color || "#8b5cf6" }}>
+      <div className="quiz-topic-icon" aria-hidden="true">{t.icon || "📁"}</div>
+      <h3 style={{ fontSize: "1.1rem" }}>{t.name}</h3>
+      {t.desc && <p className="muted" style={{ fontSize: ".86rem" }}>{t.desc}</p>}
+      <div className="meta" style={{ marginTop: "auto" }}>
+        <span>{g.quizCount} bộ đề</span>
+        <span>· {g.questionCount} câu</span>
+      </div>
+    </Link>
+  );
+}
+
+/* Thẻ bộ đề trắc nghiệm */
+export function QuizCard({ q }) {
+  const n = q.questions?.length || 0;
+  return (
+    <div className="card glass reveal">
+      <div className="meta">
+        {q.membersOnly && <span>🔒 Thành viên</span>}
+        <span>{q.category || "Chưa phân loại"}</span>
+        <span>· {n} câu</span>
+        {q.timeLimitMin > 0 && <span>· ⏱ {q.timeLimitMin} phút</span>}
+      </div>
+      <h3 style={{ fontSize: "1.15rem" }}>{q.title}</h3>
+      {q.description && <p className="muted grow" style={{ fontSize: ".92rem" }}>{q.description}</p>}
+      <div className="chips">{(q.tags || []).map((t) => <span className="chip" key={t}>#{t}</span>)}</div>
+      <div className="qrow" style={{ gap: 8, marginTop: 6 }}>
+        <Link className="btn btn-primary btn-sm" href={`/quiz/${q.id}`}>Làm bài</Link>
+        <Link className="btn btn-ghost btn-sm" href={`/quiz/${q.id}?mode=study`}>📖 Lời giải</Link>
+      </div>
+    </div>
+  );
+}
+
 /* Thanh tìm kiếm + lọc danh mục + thẻ */
 export function Filters({ items, query, setQuery, cat, setCat, tag, setTag }) {
   const cats = [...new Set(items.map((i) => i.category).filter(Boolean))];
