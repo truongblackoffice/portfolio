@@ -1,9 +1,9 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
-import { listItems, saveItem, removeItem, fmtDate } from "@/lib/db";
+import { listItems, saveItem, removeItem, uploadFile, fmtDate } from "@/lib/db";
 import useAsync from "@/lib/useAsync";
-import { IT_ICON_GROUPS, PRESET_COLORS } from "@/lib/presets";
+import { IT_ICON_GROUPS, PRESET_COLORS, renderIcon, isImageIcon } from "@/lib/presets";
 import QuizEditor from "@/components/QuizEditor";
 
 const BLANK_TOPIC = { name: "", icon: "🧠", color: "#8b5cf6", desc: "", order: 0 };
@@ -22,7 +22,22 @@ export default function AdminQuizzes() {
   const [group, setGroup] = useState("dev");
   const [showPicker, setShowPicker] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [uploadingIcon, setUploadingIcon] = useState(false);
   const [edit, setEdit] = useState(null);
+
+  const handleIconUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingIcon(true);
+    try {
+      const url = await uploadFile(file);
+      setT((prev) => ({ ...prev, icon: url }));
+    } catch (err) {
+      alert("Lỗi tải ảnh icon: " + err.message);
+    }
+    setUploadingIcon(false);
+    e.target.value = "";
+  };
 
   const topics = [...(data?.topics || [])].sort(
     (a, b) => (a.order ?? 9999) - (b.order ?? 9999) || String(a.name).localeCompare(String(b.name), "vi"));
@@ -80,10 +95,71 @@ export default function AdminQuizzes() {
         <h3 style={{ fontSize: "1.1rem", marginBottom: 14 }}>
           {editingTopic ? `✏️ Sửa chủ đề: "${editingTopic.name}"` : "+ Thêm chủ đề mới"}
         </h3>
+
+        {/* Xem trước trực tiếp (Live Preview) */}
+        <div style={{ display: "flex", alignItems: "center", gap: 14, padding: "12px 16px", background: "hsla(0 0% 100% / .03)", borderRadius: 12, marginBottom: 16, border: "1px dashed var(--glass-border)" }}>
+          <span style={{ fontSize: ".82rem", color: "var(--muted)" }}>Xem trước hiển thị:</span>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <span style={{
+              fontSize: "1.6rem", width: 44, height: 44, display: "grid", placeItems: "center",
+              background: `${t.color}22`, borderRadius: 10, border: `1px solid ${t.color}66`,
+              overflow: "hidden", padding: isImageIcon(t.icon) ? 4 : 0,
+            }}>
+              {renderIcon(t.icon, "🧠")}
+            </span>
+            <div>
+              <b style={{ fontSize: "1.05rem", color: t.color }}>{t.name || "Tên chủ đề..."}</b>
+              {t.desc && <span className="muted" style={{ fontSize: ".82rem", marginLeft: 8 }}>— {t.desc}</span>}
+            </div>
+          </div>
+        </div>
+
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12, alignItems: "end" }}>
           <div className="field" style={{ margin: 0 }}>
-            <label>Icon</label>
-            <input value={t.icon} onChange={(e) => setT({ ...t, icon: e.target.value })} style={{ textAlign: "center", fontSize: "1.3rem" }} />
+            <label>Icon (Emoji / Ảnh)</label>
+            <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+              {isImageIcon(t.icon) ? (
+                <div style={{
+                  width: 44, height: 44, borderRadius: 8, border: "1px solid var(--glass-border)",
+                  padding: 4, display: "grid", placeItems: "center", background: "rgba(255,255,255,0.05)",
+                  flexShrink: 0,
+                }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={t.icon} alt="Icon" style={{ width: "100%", height: "100%", objectFit: "contain", borderRadius: 4 }} />
+                </div>
+              ) : (
+                <input
+                  value={t.icon}
+                  onChange={(e) => setT({ ...t, icon: e.target.value })}
+                  style={{ textAlign: "center", fontSize: "1.3rem", width: 56 }}
+                />
+              )}
+              <label
+                className="btn btn-ghost btn-sm"
+                style={{ cursor: "pointer", margin: 0, height: 44, display: "inline-flex", alignItems: "center", padding: "0 10px", fontSize: ".8rem" }}
+                title="Tải ảnh icon từ máy tính (PNG, SVG, JPG, WEBP)"
+              >
+                {uploadingIcon ? "⏳" : "📷 Tải ảnh"}
+                <input
+                  type="file"
+                  accept="image/*"
+                  style={{ display: "none" }}
+                  disabled={uploadingIcon}
+                  onChange={handleIconUpload}
+                />
+              </label>
+              {isImageIcon(t.icon) && (
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm"
+                  style={{ height: 44, padding: "0 8px", color: "var(--danger, #ef4444)" }}
+                  onClick={() => setT((prev) => ({ ...prev, icon: "🧠" }))}
+                  title="Xóa ảnh và dùng emoji"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
           </div>
           <div className="field" style={{ margin: 0, gridColumn: "span 2" }}>
             <label>Tên chủ đề *</label>
@@ -159,7 +235,8 @@ export default function AdminQuizzes() {
               <span style={{
                 fontSize: "1.5rem", width: 42, height: 42, display: "grid", placeItems: "center",
                 background: `${c.color}22`, borderRadius: 10, border: `1px solid ${c.color}66`,
-              }}>{c.icon}</span>
+                overflow: "hidden", padding: isImageIcon(c.icon) ? 4 : 0,
+              }}>{renderIcon(c.icon, "🧠")}</span>
               <div>
                 <b style={{ color: c.color }}>{c.name}</b>
                 <div className="muted" style={{ fontSize: ".8rem" }}>

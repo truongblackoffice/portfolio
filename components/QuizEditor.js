@@ -3,6 +3,7 @@ import { useState } from "react";
 import { saveItem } from "@/lib/db";
 import { QUESTION_TYPES, TF_OPTIONS, newQuestion, validateQuiz } from "@/lib/quiz";
 import { parseQuizInput, SAMPLE_QUIZ_TEXT } from "@/lib/quizParser";
+import { isImageIcon } from "@/lib/presets";
 
 const csv = (s) => s.split(",").map((x) => x.trim()).filter(Boolean);
 const uid = (i = 0) => `q-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}-${i}`;
@@ -122,7 +123,11 @@ export default function QuizEditor({ item, topics, onDone }) {
           <label>Chủ đề</label>
           <select value={f.topicId} onChange={set("topicId")}>
             <option value="">— Chưa phân loại —</option>
-            {topics.map((t) => <option key={t.id} value={t.id}>{t.icon} {t.name}</option>)}
+            {topics.map((t) => (
+              <option key={t.id} value={t.id}>
+                {isImageIcon(t.icon) ? "🖼️" : (t.icon || "📁")} {t.name}
+              </option>
+            ))}
           </select>
         </div>
       </div>

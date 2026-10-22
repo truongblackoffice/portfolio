@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import { fmtDate } from "@/lib/db";
+import { renderIcon } from "@/lib/presets";
 
 export function PostCard({ p }) {
   return (
@@ -53,7 +54,7 @@ export function TopicCard({ g }) {
   const t = g.topic;
   return (
     <Link href={`/quiz/topic/${t.id}`} className="card glass reveal quiz-topic" style={{ "--topic": t.color || "#8b5cf6" }}>
-      <div className="quiz-topic-icon" aria-hidden="true">{t.icon || "📁"}</div>
+      <div className="quiz-topic-icon" aria-hidden="true">{renderIcon(t.icon, "📁")}</div>
       <h3 style={{ fontSize: "1.1rem" }}>{t.name}</h3>
       {t.desc && <p className="muted" style={{ fontSize: ".86rem" }}>{t.desc}</p>}
       <div className="meta" style={{ marginTop: "auto" }}>

@@ -1,9 +1,9 @@
 "use client";
 import { useState } from "react";
-import { listItems, saveItem, removeItem } from "@/lib/db";
+import { listItems, saveItem, removeItem, uploadFile } from "@/lib/db";
 import useAsync from "@/lib/useAsync";
 
-import { IT_ICON_GROUPS, PRESET_COLORS } from "@/lib/presets";
+import { IT_ICON_GROUPS, PRESET_COLORS, renderIcon, isImageIcon } from "@/lib/presets";
 
 export default function AdminCategories() {
   const { data: catData, reload } = useAsync(async () => {
@@ -44,6 +44,21 @@ export default function AdminCategories() {
   const [activeGroup, setActiveGroup] = useState("dev");
   const [showPicker, setShowPicker] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [uploadingIcon, setUploadingIcon] = useState(false);
+
+  const handleIconUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingIcon(true);
+    try {
+      const url = await uploadFile(file);
+      setIcon(url);
+    } catch (err) {
+      alert("Lỗi tải ảnh icon: " + err.message);
+    }
+    setUploadingIcon(false);
+    e.target.value = "";
+  };
 
   const handleEdit = (c) => {
     setEditingCategory(c);
@@ -162,10 +177,11 @@ export default function AdminCategories() {
           <span style={{ fontSize: ".82rem", color: "var(--muted)" }}>Xem trước hiển thị:</span>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <span style={{
-              fontSize: "1.6rem", width: 42, height: 42, display: "grid", placeItems: "center",
+              fontSize: "1.6rem", width: 44, height: 44, display: "grid", placeItems: "center",
               background: `${color}22`, borderRadius: 10, border: `1px solid ${color}66`,
+              overflow: "hidden", padding: isImageIcon(icon) ? 4 : 0,
             }}>
-              {icon || "📁"}
+              {renderIcon(icon, "📁")}
             </span>
             <div>
               <b style={{ fontSize: "1.05rem", color: color }}>{name || "Tên danh mục..."}</b>
@@ -175,15 +191,53 @@ export default function AdminCategories() {
         </div>
 
         {/* Các trường nhập liệu */}
-        <div style={{ display: "grid", gridTemplateColumns: "85px 1.5fr auto 2fr auto", gap: 12, alignItems: "end", marginBottom: 16 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "minmax(140px, auto) 1.5fr auto 2fr auto", gap: 12, alignItems: "end", marginBottom: 16 }}>
           <div className="field" style={{ margin: 0 }}>
-            <label>Icon</label>
-            <input
-              value={icon}
-              onChange={(e) => setIcon(e.target.value)}
-              placeholder="🚀"
-              style={{ textAlign: "center", fontSize: "1.3rem" }}
-            />
+            <label>Icon (Emoji / Ảnh)</label>
+            <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+              {isImageIcon(icon) ? (
+                <div style={{
+                  width: 44, height: 44, borderRadius: 8, border: "1px solid var(--glass-border)",
+                  padding: 4, display: "grid", placeItems: "center", background: "rgba(255,255,255,0.05)",
+                  flexShrink: 0,
+                }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={icon} alt="Icon" style={{ width: "100%", height: "100%", objectFit: "contain", borderRadius: 4 }} />
+                </div>
+              ) : (
+                <input
+                  value={icon}
+                  onChange={(e) => setIcon(e.target.value)}
+                  placeholder="🚀"
+                  style={{ textAlign: "center", fontSize: "1.3rem", width: 56 }}
+                />
+              )}
+              <label
+                className="btn btn-ghost btn-sm"
+                style={{ cursor: "pointer", margin: 0, height: 44, display: "inline-flex", alignItems: "center", padding: "0 10px", fontSize: ".8rem" }}
+                title="Tải ảnh icon từ máy tính (PNG, SVG, JPG, WEBP)"
+              >
+                {uploadingIcon ? "⏳" : "📷 Tải ảnh"}
+                <input
+                  type="file"
+                  accept="image/*"
+                  style={{ display: "none" }}
+                  disabled={uploadingIcon}
+                  onChange={handleIconUpload}
+                />
+              </label>
+              {isImageIcon(icon) && (
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm"
+                  style={{ height: 44, padding: "0 8px", color: "var(--danger, #ef4444)" }}
+                  onClick={() => setIcon("📁")}
+                  title="Xóa ảnh và dùng emoji"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
           </div>
           <div className="field" style={{ margin: 0 }}>
             <label>Tên danh mục *</label>
@@ -349,8 +403,9 @@ export default function AdminCategories() {
                 <span style={{
                   fontSize: "1.6rem", width: 44, height: 44, display: "grid", placeItems: "center",
                   background: `${c.color || "var(--primary)"}22`, borderRadius: 10, border: `1px solid ${c.color || "var(--primary)"}66`,
+                  overflow: "hidden", padding: isImageIcon(c.icon) ? 4 : 0,
                 }}>
-                  {c.icon || "📁"}
+                  {renderIcon(c.icon, "📁")}
                 </span>
                 <div>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>

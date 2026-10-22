@@ -5,6 +5,7 @@ import { useState } from "react";
 import { listItems } from "@/lib/db";
 import useAsync from "@/lib/useAsync";
 import { groupByTopic, collectSolutions } from "@/lib/quiz";
+import { renderIcon } from "@/lib/presets";
 import { QuizCard } from "@/components/Cards";
 import { SolutionItem } from "@/components/QuizParts";
 
@@ -53,7 +54,7 @@ export default function TopicPage() {
     <div className="container section">
       <Link href="/quiz" className="muted" style={{ fontSize: ".9rem" }}>← Tất cả chủ đề</Link>
       <div className="quiz-topic-head" style={{ "--topic": topic.color || "#8b5cf6" }}>
-        <div className="quiz-topic-icon" aria-hidden="true">{topic.icon || "📁"}</div>
+        <div className="quiz-topic-icon" aria-hidden="true">{renderIcon(topic.icon, "📁")}</div>
         <div>
           <h1 style={{ fontSize: "clamp(1.8rem, 4vw, 2.4rem)" }}>{topic.name}</h1>
           {topic.desc && <p className="muted" style={{ marginTop: 6 }}>{topic.desc}</p>}

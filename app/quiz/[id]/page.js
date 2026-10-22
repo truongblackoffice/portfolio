@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { getItem, listItems, watchAuth, saveAttempt } from "@/lib/db";
 import useAsync from "@/lib/useAsync";
 import { buildSession, scoreSession, gradeQuestion, formatDuration, QUESTION_TYPES } from "@/lib/quiz";
+import { renderIcon } from "@/lib/presets";
 import { Md, ReviewOptions, SolutionItem, letterOf } from "@/components/QuizParts";
 
 const MODE_LABEL = { practice: "Ôn tập", exam: "Thi thử" };
@@ -188,7 +189,14 @@ export default function QuizPage() {
         <div className="glass reveal" style={{ padding: "32px 28px", marginTop: 14, borderRadius: 18 }}>
           <div className="meta muted" style={{ display: "flex", gap: 12, flexWrap: "wrap", fontSize: ".88rem" }}>
             {quiz.membersOnly && <span className="badge draft">🔒 Thành viên</span>}
-            {topic && <span>{topic.icon} {topic.name}</span>}
+            {topic && (
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                <span style={{ width: 18, height: 18, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+                  {renderIcon(topic.icon, "📁")}
+                </span>
+                {topic.name}
+              </span>
+            )}
             <span>· {total} câu</span>
             {quiz.timeLimitMin > 0 && <span>· ⏱ {quiz.timeLimitMin} phút (Thi thử)</span>}
             <span>· Đạt từ {quiz.passPercent ?? 50}%</span>
