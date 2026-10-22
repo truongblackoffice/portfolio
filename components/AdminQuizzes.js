@@ -5,6 +5,7 @@ import { listItems, saveItem, removeItem, uploadFile, fmtDate } from "@/lib/db";
 import useAsync from "@/lib/useAsync";
 import { IT_ICON_GROUPS, PRESET_COLORS, renderIcon, isImageIcon } from "@/lib/presets";
 import QuizEditor from "@/components/QuizEditor";
+import { toast } from "@/lib/toast";
 
 const BLANK_TOPIC = { name: "", icon: "🧠", color: "#8b5cf6", desc: "", order: 0 };
 const BLANK_QUIZ = {
@@ -32,8 +33,9 @@ export default function AdminQuizzes() {
     try {
       const url = await uploadFile(file);
       setT((prev) => ({ ...prev, icon: url }));
+      toast.success("Tải ảnh icon thành công");
     } catch (err) {
-      alert("Lỗi tải ảnh icon: " + err.message);
+      toast.error("Lỗi tải ảnh icon: " + err.message);
     }
     setUploadingIcon(false);
     e.target.value = "";
@@ -61,10 +63,11 @@ export default function AdminQuizzes() {
         name: t.name.trim(), icon: t.icon || "📁", color: t.color || "#8b5cf6",
         desc: t.desc.trim(), order: Number(t.order) || 0,
       });
+      toast.success(editingTopic ? "Đã cập nhật chủ đề" : "Đã tạo chủ đề mới");
       resetTopic();
       reload();
     } catch (x) {
-      alert("Lỗi khi lưu chủ đề: " + x.message);
+      toast.error("Lỗi khi lưu chủ đề: " + x.message);
     }
     setBusy(false);
   }
@@ -72,11 +75,12 @@ export default function AdminQuizzes() {
   async function deleteTopic(topic) {
     const n = countIn(topic.id);
     if (n > 0) {
-      alert(`Chủ đề "${topic.name}" còn ${n} bộ đề. Hãy chuyển hoặc xóa các bộ đề trước khi xóa chủ đề.`);
+      toast.error(`Chủ đề "${topic.name}" còn ${n} bộ đề. Hãy chuyển hoặc xóa các bộ đề trước khi xóa chủ đề.`);
       return;
     }
     if (!confirm(`Xóa chủ đề "${topic.name}"?`)) return;
     await removeItem("quizTopics", topic.id);
+    toast.success("Đã xóa chủ đề");
     if (editingTopic?.id === topic.id) resetTopic();
     reload();
   }

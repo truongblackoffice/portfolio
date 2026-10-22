@@ -6,6 +6,7 @@ import Footer from "@/components/Footer";
 import { SiteProvider } from "@/lib/SiteContext";
 import ScrollToTop from "@/components/ScrollToTop";
 import ConsoleProtector from "@/components/ConsoleProtector";
+import ToastContainer from "@/components/Toast";
 
 const inter = Inter({
   subsets: ["latin", "vietnamese"],
@@ -101,6 +102,7 @@ export default function RootLayout({ children }) {
           <main><Suspense fallback={<div className="empty">Đang tải...</div>}>{children}</Suspense></main>
           <Footer />
           <ScrollToTop />
+          <ToastContainer />
         </SiteProvider>
       </body>
     </html>

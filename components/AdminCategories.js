@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { listItems, saveItem, removeItem, uploadFile } from "@/lib/db";
 import useAsync from "@/lib/useAsync";
+import { toast } from "@/lib/toast";
 
 import { IT_ICON_GROUPS, PRESET_COLORS, renderIcon, isImageIcon } from "@/lib/presets";
 
@@ -53,8 +54,9 @@ export default function AdminCategories() {
     try {
       const url = await uploadFile(file);
       setIcon(url);
+      toast.success("Tải ảnh icon thành công");
     } catch (err) {
-      alert("Lỗi tải ảnh icon: " + err.message);
+      toast.error("Lỗi tải ảnh icon: " + err.message);
     }
     setUploadingIcon(false);
     e.target.value = "";
@@ -112,10 +114,11 @@ export default function AdminCategories() {
         await Promise.all([...postUpdates, ...docUpdates]);
       }
 
+      toast.success(isUpdating ? "Đã cập nhật danh mục" : "Đã tạo danh mục mới");
       handleCancel();
       reload();
     } catch (err) {
-      alert("Lỗi khi lưu danh mục: " + err.message);
+      toast.error("Lỗi khi lưu danh mục: " + err.message);
     }
     setBusy(false);
   };

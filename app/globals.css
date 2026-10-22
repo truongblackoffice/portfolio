@@ -480,6 +480,125 @@ textarea { min-height: 120px; resize: vertical; }
 [data-theme="light"] .eyebrow {
   box-shadow: 0 2px 10px hsla(230 20% 20% / 0.06);
 }
+[data-theme="light"] .nav-links a:hover,
+[data-theme="light"] .nav-links a.active {
+  background: hsla(230 20% 20% / 0.08);
+  color: var(--text);
+}
+[data-theme="light"] .share-bar {
+  background: hsla(220 30% 100% / 0.95);
+  box-shadow: 0 2px 12px hsla(230 20% 20% / 0.05);
+}
+[data-theme="light"] .share-btn {
+  background: hsla(230 20% 20% / 0.05);
+  border-color: hsla(230 20% 20% / 0.15);
+}
+[data-theme="light"] .share-btn:hover {
+  background: hsla(230 20% 20% / 0.1);
+}
+[data-theme="light"] .row {
+  background: hsla(220 30% 100% / 0.92);
+  border: 1px solid hsla(230 20% 20% / 0.14);
+  box-shadow: 0 2px 8px hsla(230 20% 20% / 0.04);
+}
+[data-theme="light"] .stat {
+  background: hsla(220 30% 100% / 0.92);
+  border: 1px solid hsla(230 20% 20% / 0.14);
+}
+
+/* Comment Box */
+.comment-box {
+  background: hsla(240 30% 10% / 0.45);
+  border: 1px solid var(--glass-border);
+}
+[data-theme="light"] .comment-box {
+  background: hsla(220 30% 100% / 0.96);
+  border-color: hsla(230 20% 20% / 0.15);
+  box-shadow: 0 2px 12px hsla(230 20% 20% / 0.05);
+}
+
+/* Flagged question in Quiz Nav */
+.quiz-nav button.flagged {
+  border-color: #f59e0b !important;
+  color: #f59e0b !important;
+  background: rgba(245, 158, 11, 0.15) !important;
+  position: relative;
+}
+.quiz-nav button.flagged.cur {
+  background: var(--grad) !important;
+  color: #fff !important;
+  border-color: #f59e0b !important;
+  box-shadow: 0 0 0 2px #f59e0b;
+}
+
+/* Certificate of Achievement */
+.cert-card {
+  position: relative;
+  overflow: hidden;
+  padding: 40px 32px;
+  border-radius: 24px;
+  border: 2px solid rgba(234, 179, 8, 0.5);
+  background: radial-gradient(circle at 50% 10%, rgba(234, 179, 8, 0.12), transparent 70%), var(--glass);
+  box-shadow: 0 16px 48px rgba(234, 179, 8, 0.15);
+  text-align: center;
+  margin: 28px 0;
+}
+.cert-seal {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 16px;
+  border-radius: 999px;
+  background: rgba(234, 179, 8, 0.18);
+  border: 1px solid rgba(234, 179, 8, 0.45);
+  color: #eab308;
+  font-weight: 700;
+  font-size: 0.85rem;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-bottom: 16px;
+}
+
+/* Toast Notifications */
+.toast-container {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  pointer-events: none;
+  max-width: 400px;
+  width: calc(100% - 48px);
+}
+.toast-item {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 18px;
+  border-radius: 14px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  background: hsla(240 30% 10% / 0.95);
+  color: #fff;
+  border: 1px solid var(--glass-border);
+  box-shadow: 0 10px 30px hsla(0 0% 0% / 0.4);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  animation: toastIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: opacity 0.2s, transform 0.2s;
+}
+[data-theme="light"] .toast-item {
+  background: hsla(220 30% 100% / 0.98);
+  color: var(--text);
+  border-color: hsla(230 20% 20% / 0.18);
+  box-shadow: 0 10px 30px hsla(230 20% 20% / 0.15);
+}
+.toast-item.success { border-left: 4px solid #10b981; }
+.toast-item.error { border-left: 4px solid #ef4444; }
+.toast-item.info { border-left: 4px solid #3b82f6; }
 
 /* Print Styles */
 @media print {
@@ -491,7 +610,8 @@ textarea { min-height: 120px; resize: vertical; }
   .nav, .footer, .btn,
   .share-bar, .scroll-top-btn,
   #site-nav, .theme-toggle-btn,
-  .quiz-actions, .quiz-nav {
+  .quiz-actions, .quiz-nav,
+  .toast-container {
     display: none !important;
   }
   .container {
@@ -500,13 +620,18 @@ textarea { min-height: 120px; resize: vertical; }
     margin: 0 !important;
     padding: 0 !important;
   }
-  .glass, .card, .quiz-card, .quiz-sol {
+  .glass, .card, .quiz-card, .quiz-sol, .cert-card {
     background: transparent !important;
     border: 1px solid #ddd !important;
     box-shadow: none !important;
     color: #000 !important;
     page-break-inside: avoid;
     break-inside: avoid;
+  }
+  .cert-card {
+    border: 3px double #b45309 !important;
+    padding: 30px !important;
+    margin: 20px auto !important;
   }
   .quiz-sol-body {
     display: block !important;

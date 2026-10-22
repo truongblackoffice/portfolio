@@ -5,6 +5,7 @@ import {
   ADMIN_FEATURES, getDefaultPermissions,
 } from "@/lib/db";
 import useAsync from "@/lib/useAsync";
+import { toast } from "@/lib/toast";
 
 export default function Users() {
   const { data, reload } = useAsync(() => listItems("users"));
@@ -84,9 +85,10 @@ export default function Users() {
         permissions: getDefaultPermissions(newRole),
       };
       await saveItem("users", updatedUser);
+      toast.success(`Đã cập nhật vai trò: ${ROLES[newRole] || newRole}`);
       reload();
     } catch (err) {
-      alert("Lỗi khi cập nhật vai trò: " + err.message);
+      toast.error("Lỗi khi cập nhật vai trò: " + err.message);
     }
   };
 

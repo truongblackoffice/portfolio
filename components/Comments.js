@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { listComments, addComment, removeComment, fmtDate, roleOf, isAdminUser } from "@/lib/db";
 import useAsync from "@/lib/useAsync";
+import { toast } from "@/lib/toast";
 
 export function UserRoleBadge({ role, style = {} }) {
   if (!role || role === "guest") return null;
@@ -147,9 +148,10 @@ export default function Comments({ postId, currentUser, isAdmin }) {
     if (!confirm("Bạn có chắc muốn xóa bình luận này?")) return;
     try {
       await removeComment(commentId);
+      toast.success("Đã xóa bình luận");
       await reload();
     } catch (x) {
-      alert("Lỗi khi xóa bình luận: " + x.message);
+      toast.error("Lỗi khi xóa bình luận: " + x.message);
     }
   };
 
@@ -212,12 +214,11 @@ export default function Comments({ postId, currentUser, isAdmin }) {
           return (
             <div
               key={c.id}
-              className="glass"
+              className="glass comment-box"
               style={{
                 padding: "16px 18px",
-                borderRadius: 12,
-                background: "hsla(0 0% 100% / .02)",
-                border: "1px solid var(--glass-border)",
+                borderRadius: 14,
+                marginBottom: 12,
               }}
             >
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>

@@ -110,10 +110,22 @@ export default function QuizPage() {
   const [result, setResult] = useState(null);
   const [onlyWrong, setOnlyWrong] = useState(false);
   const [open, setOpen] = useState(() => new Set());
+  const [flagged, setFlagged] = useState(() => new Set());
+  const [studyQuery, setStudyQuery] = useState("");
+  const [certName, setCertName] = useState("");
   const deadline = useRef(0);
   const startedAt = useRef(0);
   const [isRetry, setIsRetry] = useState(false);
   const finishedRef = useRef(false);
+
+  const toggleFlag = (qid) => {
+    setFlagged((prev) => {
+      const next = new Set(prev);
+      if (next.has(qid)) next.delete(qid);
+      else next.add(qid);
+      return next;
+    });
+  };
 
   const begin = (m, source = quiz, retry = false) => {
     if (m === "exam") {
@@ -132,7 +144,7 @@ export default function QuizPage() {
     finishedRef.current = false;
     setIsRetry(retry);
     startedAt.current = Date.now();
-    setSession(s); setAnswers({}); setChecked({}); setIdx(0);
+    setSession(s); setAnswers({}); setChecked({}); setIdx(0); setFlagged(new Set());
     setConfirming(false); setResult(null); setOnlyWrong(false); setOpen(new Set());
     if (m === "exam" && quiz.timeLimitMin > 0) {
       deadline.current = Date.now() + quiz.timeLimitMin * 60000;
@@ -151,6 +163,7 @@ export default function QuizPage() {
     setAnswers(draft.answers || {});
     setChecked({});
     setIdx(draft.idx || 0);
+    setFlagged(new Set(draft.flagged || []));
     setMode(draft.mode || "practice");
     startedAt.current = draft.startedAt || Date.now();
     if (draft.mode === "exam" && draft.deadline) {
@@ -237,13 +250,14 @@ export default function QuizPage() {
         answers,
         idx,
         remaining,
+        flagged: Array.from(flagged),
         deadline: deadline.current,
         startedAt: startedAt.current,
         timestamp: Date.now(),
       };
       sessionStorage.setItem("quiz_draft_" + quiz.id, JSON.stringify(payload));
     } catch {}
-  }, [phase, session, answers, idx, remaining, mode, quiz?.id]);
+  }, [phase, session, answers, idx, remaining, mode, quiz?.id, flagged]);
 
   // Đồng hồ đếm ngược dựa trên mốc thời gian thật để không bị lệch khi tab bị làm chậm
   const timed = remaining !== null;
@@ -305,13 +319,53 @@ export default function QuizPage() {
 
   /* ---------- Xem lời giải ---------- */
   if (phase === "study") {
-    const keys = quiz.questions.map((q) => q.id);
-    const allOpen = keys.every((k) => open.has(k));
+    const searchTrimmed = studyQuery.trim().toLowerCase();
+    const filtered = (quiz.questions || []).map((q, origIdx) => ({ q, origIdx })).filter(({ q }) => {
+      if (!searchTrimmed) return true;
+      const t = q.text?.toLowerCase() || "";
+      const exp = q.explanation?.toLowerCase() || "";
+      const opts = (q.options || []).map((o) => (typeof o === "string" ? o : o.text).toLowerCase()).join(" ");
+      return t.includes(searchTrimmed) || exp.includes(searchTrimmed) || opts.includes(searchTrimmed);
+    });
+    const keys = filtered.map(({ q }) => q.id);
+    const allOpen = keys.length > 0 && keys.every((k) => open.has(k));
     return (
       <div className="container section">
         <Link href={back.href} className="muted" style={{ fontSize: ".9rem" }}>{back.label}</Link>
         <h1 style={{ fontSize: "clamp(1.7rem, 4vw, 2.3rem)", margin: "12px 0 6px" }}>{quiz.title}</h1>
         <p className="muted" style={{ marginBottom: 18 }}>📖 Xem lời giải · {total} câu</p>
+
+        <div style={{ margin: "14px 0 18px", maxWidth: 520 }}>
+          <input
+            type="search"
+            placeholder="🔍 Tìm kiếm câu hỏi, đáp án hoặc giải thích..."
+            value={studyQuery}
+            onChange={(e) => setStudyQuery(e.target.value)}
+            style={{
+              width: "100%",
+              padding: "10px 16px",
+              borderRadius: 12,
+              background: "var(--glass)",
+              border: "1px solid var(--glass-border)",
+              color: "var(--text)",
+              fontSize: "0.92rem",
+            }}
+          />
+          {studyQuery && (
+            <div className="muted" style={{ fontSize: "0.82rem", marginTop: 6, display: "flex", justifyContent: "space-between" }}>
+              <span>Tìm thấy {filtered.length}/{quiz.questions.length} câu hỏi phù hợp</span>
+              <button
+                type="button"
+                className="muted"
+                onClick={() => setStudyQuery("")}
+                style={{ background: "none", border: "none", cursor: "pointer", textDecoration: "underline", fontSize: "0.82rem" }}
+              >
+                Xóa tìm kiếm
+              </button>
+            </div>
+          )}
+        </div>
+
         <div className="qrow" style={{ gap: 10, marginBottom: 18, flexWrap: "wrap" }}>
           <button className="btn btn-ghost btn-sm" onClick={() => setOpen(allOpen ? new Set() : new Set(keys))}>
             {allOpen ? "Thu gọn tất cả" : "Mở tất cả"}
@@ -332,12 +386,18 @@ export default function QuizPage() {
           </button>
         </div>
         <div className="quiz-sol-list">
-          {quiz.questions.map((q, i) => (
-            <SolutionItem
-              key={q.id} q={q} number={i + 1} open={open.has(q.id)}
-              onToggle={() => setOpen((prev) => { const n = new Set(prev); n.has(q.id) ? n.delete(q.id) : n.add(q.id); return n; })}
-            />
-          ))}
+          {filtered.length ? (
+            filtered.map(({ q, origIdx }) => (
+              <SolutionItem
+                key={q.id} q={q} number={origIdx + 1} open={open.has(q.id)}
+                onToggle={() => setOpen((prev) => { const n = new Set(prev); n.has(q.id) ? n.delete(q.id) : n.add(q.id); return n; })}
+              />
+            ))
+          ) : (
+            <div className="glass empty" style={{ padding: 32, borderRadius: 14 }}>
+              Không tìm thấy câu hỏi nào phù hợp với &quot;{studyQuery}&quot;.
+            </div>
+          )}
         </div>
       </div>
     );
@@ -665,6 +725,60 @@ export default function QuizPage() {
           </p>
         </div>
 
+        {/* Giấy chứng nhận hoàn thành xuất sắc khi đạt >= 80% */}
+        {result.percent >= 80 && (
+          <div className="cert-card reveal">
+            <div className="cert-seal">
+              <span>🏆</span> Antigravity LMS Verified
+            </div>
+            <h2 style={{ fontSize: "clamp(1.4rem, 3.5vw, 2rem)", textTransform: "uppercase", letterSpacing: 2, color: "#eab308", marginBottom: 8 }}>
+              Giấy Chứng Nhận Thành Tích
+            </h2>
+            <p className="muted" style={{ fontSize: "0.95rem", fontStyle: "italic", marginBottom: 14 }}>
+              Chứng nhận hoàn thành xuất sắc bài kiểm tra trắc nghiệm
+            </p>
+
+            <div style={{ margin: "20px 0", padding: "16px 0", borderTop: "1px dashed rgba(234, 179, 8, 0.4)", borderBottom: "1px dashed rgba(234, 179, 8, 0.4)" }}>
+              <div style={{ fontSize: "0.85rem", color: "var(--muted)", marginBottom: 4 }}>Trao tặng cho học viên:</div>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, flexWrap: "wrap" }}>
+                <b style={{ fontSize: "clamp(1.3rem, 3vw, 1.8rem)", color: "var(--text)" }}>
+                  {certName || user?.displayName || user?.email?.split("@")[0] || "Học viên xuất sắc"}
+                </b>
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm"
+                  style={{ padding: "2px 8px", fontSize: "0.75rem", borderRadius: 8 }}
+                  onClick={() => {
+                    const n = prompt("Nhập tên bạn muốn in lên chứng chỉ:", certName || user?.displayName || "");
+                    if (n !== null && n.trim()) setCertName(n.trim());
+                  }}
+                  title="Đổi tên hiển thị trên chứng chỉ"
+                >
+                  ✏️ Đổi tên
+                </button>
+              </div>
+            </div>
+
+            <div style={{ fontSize: "1.1rem", fontWeight: 600, marginBottom: 6 }}>
+              {quiz.title} {topic ? `· ${topic.name}` : ""}
+            </div>
+            <div className="muted" style={{ fontSize: "0.9rem", marginBottom: 20 }}>
+              Điểm đạt: <b style={{ color: "#10b981", fontSize: "1.1rem" }}>{result.percent}%</b> ({result.correctCount}/{result.total} câu) · ⏱️ Thời gian: {formatDuration(result.durationSec)}
+            </div>
+
+            <div className="qrow" style={{ justifyContent: "center", gap: 12 }}>
+              <button
+                type="button"
+                className="btn btn-primary btn-sm"
+                onClick={() => window.print()}
+                style={{ background: "linear-gradient(135deg, #eab308, #ca8a04)", color: "#000", fontWeight: 700 }}
+              >
+                🖨️ In chứng nhận / Lưu PDF
+              </button>
+            </div>
+          </div>
+        )}
+
         <h2 style={{ fontSize: "1.25rem", margin: "28px 0 12px" }}>Xem lại bài làm</h2>
         <div className="qrow" style={{ gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
           <button className={`chip ${onlyWrong ? "on" : ""}`} onClick={() => setOnlyWrong(!onlyWrong)}>Chỉ câu sai ({wrongIds.size})</button>
@@ -737,7 +851,14 @@ export default function QuizPage() {
       <div className="quiz-bar glass">
         <div style={{ minWidth: 0 }}>
           <div className="muted" style={{ fontSize: ".78rem" }}>{MODE_LABEL[mode]} · {quiz.title}</div>
-          <b>Câu {idx + 1}/{session.length}</b>
+          <b>
+            Câu {idx + 1}/{session.length}
+            {flagged.size > 0 && (
+              <span style={{ color: "#f59e0b", fontSize: ".82rem", fontWeight: 600, marginLeft: 8 }}>
+                · 🚩 {flagged.size} câu gắn cờ
+              </span>
+            )}
+          </b>
         </div>
         {timed && <div className={`quiz-timer ${lowTime ? "low" : ""}`} aria-live="off">⏱ {formatDuration(remaining)}</div>}
       </div>
@@ -746,9 +867,26 @@ export default function QuizPage() {
       </div>
 
       <div className="glass quiz-card">
-        <div className="meta muted" style={{ marginBottom: 10 }}>
-          <span className="chip">{QUESTION_TYPES[q.type]}</span>
-          {isMultiple && <span style={{ marginLeft: 8, fontSize: ".82rem" }}>Chọn tất cả đáp án đúng</span>}
+        <div className="meta muted" style={{ marginBottom: 12, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+          <div>
+            <span className="chip">{QUESTION_TYPES[q.type]}</span>
+            {isMultiple && <span style={{ marginLeft: 8, fontSize: ".82rem" }}>Chọn tất cả đáp án đúng</span>}
+          </div>
+          <button
+            type="button"
+            className={`btn btn-ghost btn-sm ${flagged.has(q.id) ? "flagged" : ""}`}
+            onClick={() => toggleFlag(q.id)}
+            title={flagged.has(q.id) ? "Bỏ gắn cờ" : "Đánh dấu cờ để xem lại sau"}
+            style={{
+              borderColor: flagged.has(q.id) ? "#f59e0b" : "var(--glass-border)",
+              background: flagged.has(q.id) ? "rgba(245, 158, 11, 0.15)" : "transparent",
+              color: flagged.has(q.id) ? "#f59e0b" : "var(--muted)",
+              padding: "4px 12px",
+              fontSize: "0.82rem",
+            }}
+          >
+            🚩 {flagged.has(q.id) ? "Đã gắn cờ" : "Gắn cờ xem lại"}
+          </button>
         </div>
         <h2 className="quiz-q">{q.text}</h2>
 
@@ -808,23 +946,43 @@ export default function QuizPage() {
         </div>
       </div>
 
-      {mode === "exam" && (
-        <div className="glass" style={{ padding: 18, marginTop: 16, borderRadius: 16 }}>
-          <div className="qrow" style={{ justifyContent: "space-between", marginBottom: 10, gap: 10, flexWrap: "wrap" }}>
-            <b style={{ fontSize: ".95rem" }}>Bảng câu hỏi · đã làm {answeredCount}/{session.length}</b>
+      <div className="glass" style={{ padding: 18, marginTop: 16, borderRadius: 16 }}>
+        <div className="qrow" style={{ justifyContent: "space-between", marginBottom: 10, gap: 10, flexWrap: "wrap" }}>
+          <b style={{ fontSize: ".95rem" }}>
+            Bảng câu hỏi · đã làm {answeredCount}/{session.length}
+            {flagged.size > 0 && <span style={{ color: "#f59e0b", marginLeft: 8 }}>· 🚩 {flagged.size} câu gắn cờ</span>}
+          </b>
+          {mode === "exam" ? (
             <button className="btn btn-ghost btn-sm" onClick={() => setConfirming(true)}>Nộp bài</button>
-          </div>
-          <div className="quiz-nav">
-            {session.map((x, i) => (
-              <button
-                key={x.id} type="button" aria-label={`Câu ${i + 1}`}
-                className={`${(answers[x.id] || []).length ? "done" : ""} ${i === idx ? "cur" : ""}`}
-                onClick={() => setIdx(i)}
-              >{i + 1}</button>
-            ))}
-          </div>
+          ) : (
+            <button className="btn btn-ghost btn-sm" onClick={finish}>Kết thúc</button>
+          )}
         </div>
-      )}
+        <div className="quiz-nav">
+          {session.map((x, i) => {
+            const isDone = (answers[x.id] || []).length > 0;
+            const isCur = i === idx;
+            const isFlagged = flagged.has(x.id);
+            return (
+              <button
+                key={x.id}
+                type="button"
+                aria-label={`Câu ${i + 1}`}
+                className={`${isDone ? "done" : ""} ${isCur ? "cur" : ""} ${isFlagged ? "flagged" : ""}`}
+                onClick={() => setIdx(i)}
+                style={{ position: "relative" }}
+              >
+                {i + 1}
+                {isFlagged && (
+                  <span style={{ position: "absolute", top: 1, right: 3, fontSize: "0.62rem", lineHeight: 1 }}>
+                    🚩
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
 
       {confirming && (
         <div className="quiz-modal" role="dialog" aria-modal="true" onClick={() => setConfirming(false)}>
