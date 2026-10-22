@@ -270,6 +270,49 @@ export default function QuizPage() {
           <h1 style={{ fontSize: "clamp(1.8rem, 4vw, 2.5rem)", margin: "12px 0" }}>{quiz.title}</h1>
           {quiz.description && <p className="muted" style={{ marginBottom: 18 }}>{quiz.description}</p>}
 
+          {result && (
+            <div
+              className="glass reveal"
+              style={{
+                padding: "16px 20px",
+                borderRadius: 16,
+                margin: "18px 0",
+                border: `1px solid ${result.passed ? "rgba(16, 185, 129, 0.4)" : "rgba(239, 68, 68, 0.4)"}`,
+                background: result.passed ? "rgba(16, 185, 129, 0.08)" : "rgba(239, 68, 68, 0.08)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 14,
+                flexWrap: "wrap",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <span style={{ fontSize: "1.8rem" }}>{result.passed ? "🎉" : "💪"}</span>
+                <div>
+                  <div style={{ fontWeight: 600, fontSize: "1rem" }}>
+                    Kết quả vừa hoàn thành:{" "}
+                    <span style={{ color: result.passed ? "#10b981" : "#ef4444", fontWeight: 700 }}>
+                      {result.percent}%
+                    </span>{" "}
+                    ({result.correctCount}/{result.total} câu đúng) · {MODE_LABEL[mode]}
+                  </div>
+                  <div className="muted" style={{ fontSize: ".84rem", marginTop: 2 }}>
+                    ⏱️ Thời gian: {formatDuration(result.durationSec)} · Điểm đạt {quiz.passPercent ?? 50}%{" "}
+                    {result.passed ? "✅ Đạt" : "❌ Chưa đạt"}
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                onClick={() => { setPhase("result"); window.scrollTo({ top: 0 }); }}
+                style={{ borderColor: "currentColor", fontWeight: 600 }}
+              >
+                📖 Xem lại bài làm chi tiết →
+              </button>
+            </div>
+          )}
+
           <div className="quiz-modes">
             <button className="quiz-mode" onClick={() => begin("practice")}>
               <span className="quiz-mode-ico">🎯</span>
@@ -356,7 +399,19 @@ export default function QuizPage() {
     const allOpen = reviewKeys.length > 0 && reviewKeys.every((k) => open.has(k));
     return (
       <div className="container section">
-        <Link href={back.href} className="muted" style={{ fontSize: ".9rem" }}>{back.label}</Link>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 8, fontSize: ".9rem" }}>
+          <button
+            type="button"
+            className="muted"
+            onClick={() => { setPhase("start"); window.scrollTo({ top: 0 }); }}
+            style={{ background: "none", border: "none", cursor: "pointer", padding: 0, textDecoration: "underline" }}
+            title="Quay lại màn hình chọn chế độ thi hoặc ôn tập"
+          >
+            ← Tùy chọn chế độ ({quiz.title})
+          </button>
+          <span className="muted">·</span>
+          <Link href={back.href} className="muted">{back.label}</Link>
+        </div>
         <div className={`glass quiz-result ${result.passed ? "pass" : "fail"}`}>
           <div className="quiz-result-ico">{result.passed ? "🎉" : "💪"}</div>
           <h1 style={{ fontSize: "clamp(1.6rem, 4vw, 2.2rem)" }}>{result.passed ? "Chúc mừng, bạn đã đạt!" : "Cố gắng thêm nhé!"}</h1>
@@ -365,7 +420,20 @@ export default function QuizPage() {
             Đúng <b>{result.correctCount}/{result.total}</b> câu · {MODE_LABEL[mode]} · ⏱ {formatDuration(result.durationSec)} · Điểm đạt {quiz.passPercent ?? 50}%
           </p>
           <div className="qrow" style={{ justifyContent: "center", gap: 10, flexWrap: "wrap", marginTop: 18 }}>
-            <button className="btn btn-primary btn-sm" onClick={() => begin(mode === "exam" && !isRetry ? "exam" : "practice")}>🔄 Làm lại</button>
+            <button
+              className="btn btn-primary btn-sm"
+              onClick={() => { setPhase("start"); window.scrollTo({ top: 0 }); }}
+              id="btn-back-to-options"
+            >
+              🎯 Đổi chế độ / Tùy chọn đề
+            </button>
+            <button
+              className="btn btn-ghost btn-sm"
+              onClick={() => begin(mode === "exam" && !isRetry ? "exam" : "practice")}
+              id="btn-retry-same-mode"
+            >
+              🔄 Làm lại ngay ({MODE_LABEL[mode]})
+            </button>
             {wrongIds.size > 0 && (
               <button
                 className="btn btn-ghost btn-sm"
@@ -374,7 +442,7 @@ export default function QuizPage() {
                 ❌ Chỉ làm lại {wrongIds.size} câu sai
               </button>
             )}
-            <Link href="/quiz" className="btn btn-ghost btn-sm">Về danh sách</Link>
+            <Link href="/quiz" className="btn btn-ghost btn-sm">📋 Về danh sách đề</Link>
           </div>
           <p className="muted" style={{ fontSize: ".8rem", marginTop: 14 }}>
             {isRetry
@@ -409,6 +477,21 @@ export default function QuizPage() {
               onToggle={() => setOpen((prev) => { const n = new Set(prev); n.has(q.id) ? n.delete(q.id) : n.add(q.id); return n; })}
             />
           )) : <div className="empty">Bạn không sai câu nào 🎉</div>}
+        </div>
+        <div className="qrow" style={{ justifyContent: "center", gap: 12, marginTop: 28, padding: "18px 0", borderTop: "1px solid var(--glass-border)", flexWrap: "wrap" }}>
+          <button
+            className="btn btn-primary"
+            onClick={() => { setPhase("start"); window.scrollTo({ top: 0 }); }}
+          >
+            🎯 Trở về trang tùy chọn chế độ (Thi / Ôn tập)
+          </button>
+          <button
+            className="btn btn-ghost"
+            onClick={() => begin(mode === "exam" && !isRetry ? "exam" : "practice")}
+          >
+            🔄 Làm lại ngay
+          </button>
+          <Link href="/quiz" className="btn btn-ghost">📋 Về danh sách đề</Link>
         </div>
         {renderBlockedModal()}
       </div>

@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { fmtDate } from "@/lib/db";
 import { renderIcon } from "@/lib/presets";
 
@@ -67,16 +68,40 @@ export function TopicCard({ g }) {
 
 /* Thẻ bộ đề trắc nghiệm */
 export function QuizCard({ q }) {
+  const router = useRouter();
   const n = q.questions?.length || 0;
+
+  const handleCardClick = (e) => {
+    // Không can thiệp nếu người dùng bấm vào các nút hoặc liên kết con
+    if (e.target.closest("a, button")) return;
+    router.push(`/quiz/${q.id}`);
+  };
+
   return (
-    <div className="card glass reveal">
+    <div
+      className="card glass reveal"
+      onClick={handleCardClick}
+      style={{ cursor: "pointer" }}
+      role="link"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if ((e.key === "Enter" || e.key === " ") && !e.target.closest("a, button")) {
+          router.push(`/quiz/${q.id}`);
+        }
+      }}
+      title="Bấm để vào trang tùy chọn chế độ thi & ôn tập"
+    >
       <div className="meta">
         {q.membersOnly && <span>🔒 Thành viên</span>}
         <span>{q.category || "Chưa phân loại"}</span>
         <span>· {n} câu</span>
         {q.timeLimitMin > 0 && <span>· ⏱ {q.timeLimitMin} phút</span>}
       </div>
-      <h3 style={{ fontSize: "1.15rem" }}>{q.title}</h3>
+      <h3 style={{ fontSize: "1.15rem" }}>
+        <Link href={`/quiz/${q.id}`} style={{ color: "inherit", textDecoration: "none" }} className="hover-underline">
+          {q.title}
+        </Link>
+      </h3>
       {q.description && <p className="muted grow" style={{ fontSize: ".92rem" }}>{q.description}</p>}
       <div className="chips">{(q.tags || []).map((t) => <span className="chip" key={t}>#{t}</span>)}</div>
       <div className="qrow" style={{ gap: 8, marginTop: 6 }}>
