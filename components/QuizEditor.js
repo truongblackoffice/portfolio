@@ -11,6 +11,7 @@ import {
   SAMPLE_AI_PROMPT,
 } from "@/lib/quizParser";
 import { isImageIcon } from "@/lib/presets";
+import AIQuizGenerator from "./AIQuizGenerator";
 
 const csv = (s) => s.split(",").map((x) => x.trim()).filter(Boolean);
 const uid = (i = 0) => `q-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}-${i}`;
@@ -35,8 +36,17 @@ export default function QuizEditor({ item, topics, onDone }) {
   const [preview, setPreview] = useState(null);
   const [copiedJson, setCopiedJson] = useState(false);
   const [showJsonModal, setShowJsonModal] = useState(false);
+  const [showAiModal, setShowAiModal] = useState(false);
   const [activeJsonTab, setActiveJsonTab] = useState("guided"); // guided | simple | ai
   const [copiedModalTab, setCopiedModalTab] = useState(false);
+
+  const handleApplyAiQuestions = (newQuestions, replaceAll, titleSuggestion) => {
+    setF((p) => ({
+      ...p,
+      title: !p.title && titleSuggestion ? titleSuggestion : p.title,
+      questions: replaceAll ? newQuestions : [...p.questions, ...newQuestions],
+    }));
+  };
 
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
   const num = (k) => (e) => setF({ ...f, [k]: Math.max(0, parseInt(e.target.value, 10) || 0) });
@@ -173,7 +183,88 @@ export default function QuizEditor({ item, topics, onDone }) {
         <label className="quiz-check"><input type="checkbox" checked={f.shuffleOptions} onChange={check("shuffleOptions")} /> Mặc định xáo trộn đáp án</label>
       </div>
 
-      {/* Nhập hàng loạt */}
+      {/* TẠO ĐỀ BẰNG AI (WORD / PDF / TEXT) */}
+      <div
+        className="glass"
+        style={{
+          margin: "18px 0",
+          padding: "16px 20px",
+          borderRadius: 16,
+          background: "linear-gradient(135deg, rgba(99, 102, 241, 0.12) 0%, rgba(168, 85, 247, 0.15) 50%, rgba(236, 72, 153, 0.12) 100%)",
+          border: "1px solid rgba(168, 85, 247, 0.4)",
+          boxShadow: "0 8px 32px rgba(168, 85, 247, 0.15)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          flexWrap: "wrap",
+          gap: 14,
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 14, minWidth: 260 }}>
+          <div
+            style={{
+              width: 44,
+              height: 44,
+              borderRadius: 12,
+              background: "linear-gradient(135deg, #6366f1, #a855f7, #ec4899)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: "1.4rem",
+              color: "#fff",
+              boxShadow: "0 4px 16px rgba(168, 85, 247, 0.4)",
+              flexShrink: 0,
+            }}
+          >
+            ✨
+          </div>
+          <div>
+            <div style={{ fontWeight: 800, fontSize: "1.05rem", color: "#fff", display: "flex", alignItems: "center", gap: 8 }}>
+              <span>Trợ lý AI Tạo Đề Tự Động</span>
+              <span
+                style={{
+                  fontSize: ".7rem",
+                  padding: "2px 8px",
+                  borderRadius: 999,
+                  background: "linear-gradient(135deg, #a855f7, #ec4899)",
+                  color: "#fff",
+                  fontWeight: 700,
+                  textTransform: "uppercase",
+                }}
+              >
+                Mới
+              </span>
+            </div>
+            <div className="muted" style={{ fontSize: ".84rem", marginTop: 2 }}>
+              Phân tích tệp bài học <b>Word (.docx)</b>, <b>PDF</b> hoặc văn bản để tự động tạo câu hỏi trắc nghiệm kèm đáp án và lời giải.
+            </div>
+          </div>
+        </div>
+        <button
+          type="button"
+          className="btn"
+          onClick={() => setShowAiModal(true)}
+          style={{
+            background: "linear-gradient(135deg, #6366f1, #a855f7, #ec4899)",
+            color: "#fff",
+            border: "none",
+            borderRadius: 12,
+            padding: "10px 22px",
+            fontWeight: 700,
+            fontSize: ".95rem",
+            boxShadow: "0 4px 18px rgba(168, 85, 247, 0.4)",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 8,
+            cursor: "pointer",
+            transition: "all .2s ease",
+          }}
+        >
+          <span>✨</span>
+          <span>Tạo đề thi bằng AI</span>
+        </button>
+      </div>
+
       {/* Nhập hàng loạt */}
       <details className="quiz-bulk">
         <summary
@@ -437,6 +528,23 @@ export default function QuizEditor({ item, topics, onDone }) {
         <button type="button" className="btn btn-ghost btn-sm" onClick={() => addQ("single")}>+ Chọn 1 đáp án</button>
         <button type="button" className="btn btn-ghost btn-sm" onClick={() => addQ("multiple")}>+ Chọn nhiều đáp án</button>
         <button type="button" className="btn btn-ghost btn-sm" onClick={() => addQ("truefalse")}>+ Đúng / Sai</button>
+        <button
+          type="button"
+          className="btn btn-sm"
+          style={{
+            background: "linear-gradient(135deg, rgba(99,102,241,0.25), rgba(168,85,247,0.3))",
+            border: "1px solid rgba(168,85,247,0.6)",
+            color: "#fff",
+            fontWeight: 600,
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
+          }}
+          onClick={() => setShowAiModal(true)}
+        >
+          <span>✨</span>
+          <span>Tạo bằng AI</span>
+        </button>
       </div>
 
       <div style={{ display: "flex", gap: 12, marginTop: 24 }}>
@@ -701,6 +809,14 @@ export default function QuizEditor({ item, topics, onDone }) {
           </div>
         </div>
       )}
+
+      {/* AI Quiz Generator Modal */}
+      <AIQuizGenerator
+        isOpen={showAiModal}
+        onClose={() => setShowAiModal(false)}
+        onApply={handleApplyAiQuestions}
+        existingCount={f.questions.length}
+      />
     </form>
   );
 }

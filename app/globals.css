@@ -648,4 +648,63 @@ textarea { min-height: 120px; resize: vertical; }
   }
 }
 
+/* ==========================================================================
+   AI QUIZ GENERATOR MODAL & ANIMATIONS
+   ========================================================================== */
+.ai-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100000;
+  background: rgba(0, 0, 0, 0.78);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: aiFadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ai-modal-container {
+  background: var(--bg-2, #12131c);
+  animation: aiModalIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes aiFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes aiModalIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.spinner {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: #fff;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+
 
