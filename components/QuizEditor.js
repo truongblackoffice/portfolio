@@ -187,7 +187,7 @@ export default function QuizEditor({ item, topics, onDone }) {
             onChange={num("examQuestionCount")}
             placeholder="0"
           />
-          <small className="muted" style={{ fontSize: "0.78rem" }}>Ví dụ: Đề 200 câu, nhập 40 để lấy ngẫu nhiên 40 câu</small>
+          <small className="muted" style={{ fontSize: "0.78rem" }}>Học viên sẽ thi đúng số câu này (0 = thi hết ngân hàng)</small>
         </div>
         <div className="field">
           <label>Số câu khi Ôn tập (0 = tất cả)</label>
@@ -199,7 +199,7 @@ export default function QuizEditor({ item, topics, onDone }) {
             onChange={num("practiceQuestionCount")}
             placeholder="0"
           />
-          <small className="muted" style={{ fontSize: "0.78rem" }}>Số câu gợi ý khi học viên chọn Ôn tập</small>
+          <small className="muted" style={{ fontSize: "0.78rem" }}>Học viên sẽ ôn tập đúng số câu này (0 = ôn hết ngân hàng)</small>
         </div>
       </div>
       <div style={{ display: "flex", gap: 22, margin: "10px 0 6px", flexWrap: "wrap" }}>
