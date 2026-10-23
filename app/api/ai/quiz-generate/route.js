@@ -186,7 +186,7 @@ export async function POST(req) {
     const formData = await req.formData();
     const file = formData.get("file");
     const rawText = formData.get("text") || "";
-    const count = Math.min(40, Math.max(1, parseInt(formData.get("count") || "10", 10)));
+    const count = Math.min(200, Math.max(1, parseInt(formData.get("count") || "10", 10)));
     const difficulty = formData.get("difficulty") || "mixed"; // easy | medium | hard | mixed
     const questionTypes = formData.get("types") || "single,multiple,truefalse";
     const customPrompt = formData.get("customPrompt") || "";

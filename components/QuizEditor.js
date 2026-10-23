@@ -26,6 +26,8 @@ export default function QuizEditor({ item, topics, onDone }) {
     timeLimitMin: item.timeLimitMin ?? 0,
     passPercent: item.passPercent ?? 50,
     maxExamPerHour: item.maxExamPerHour !== undefined ? item.maxExamPerHour : 5,
+    examQuestionCount: item.examQuestionCount ?? 0,
+    practiceQuestionCount: item.practiceQuestionCount ?? 0,
     shuffleQuestions: item.shuffleQuestions !== false,
     shuffleOptions: item.shuffleOptions !== false,
   });
@@ -174,6 +176,30 @@ export default function QuizEditor({ item, topics, onDone }) {
           <label>Lượt thi thử / 1 giờ (0 = vô hạn)</label>
           <input type="number" min={0} max={100} value={f.maxExamPerHour ?? 5} onChange={num("maxExamPerHour")} placeholder="5" />
           <small className="muted" style={{ fontSize: "0.78rem" }}>Chế độ Ôn tập luôn vô hạn lần</small>
+        </div>
+        <div className="field">
+          <label>Số câu khi Thi thử (0 = tất cả)</label>
+          <input
+            type="number"
+            min={0}
+            max={1000}
+            value={f.examQuestionCount ?? 0}
+            onChange={num("examQuestionCount")}
+            placeholder="0"
+          />
+          <small className="muted" style={{ fontSize: "0.78rem" }}>Ví dụ: Đề 200 câu, nhập 40 để lấy ngẫu nhiên 40 câu</small>
+        </div>
+        <div className="field">
+          <label>Số câu khi Ôn tập (0 = tất cả)</label>
+          <input
+            type="number"
+            min={0}
+            max={1000}
+            value={f.practiceQuestionCount ?? 0}
+            onChange={num("practiceQuestionCount")}
+            placeholder="0"
+          />
+          <small className="muted" style={{ fontSize: "0.78rem" }}>Số câu gợi ý khi học viên chọn Ôn tập</small>
         </div>
       </div>
       <div style={{ display: "flex", gap: 22, margin: "10px 0 6px", flexWrap: "wrap" }}>

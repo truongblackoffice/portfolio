@@ -138,7 +138,17 @@ export default function QuizPage() {
       setAttemptTick((t) => t + 1);
     }
     const n = source.questions?.length || 0;
-    const count = retry || opts.count >= n ? 0 : opts.count;
+    let targetCount = optsOver.count;
+    if (targetCount === undefined) {
+      if (m === "exam" && quiz.examQuestionCount > 0) {
+        targetCount = quiz.examQuestionCount;
+      } else if (m === "practice" && quiz.practiceQuestionCount > 0) {
+        targetCount = quiz.practiceQuestionCount;
+      } else {
+        targetCount = opts.count;
+      }
+    }
+    const count = retry || targetCount >= n ? 0 : targetCount;
     const s = buildSession(source, { shuffleQuestions: opts.shuffleQuestions, shuffleOptions: opts.shuffleOptions, count });
     if (!s.length) return;
     finishedRef.current = false;
@@ -517,7 +527,10 @@ export default function QuizPage() {
                   ♾️ Vô hạn lần
                 </span>
               </div>
-              <span className="muted">Kiểm tra từng câu, xem đúng/sai và giải thích ngay. Ôn luyện tự do không giới hạn.</span>
+              <span className="muted">
+                Kiểm tra từng câu, xem đúng/sai và giải thích ngay. Ôn luyện tự do
+                {quiz.practiceQuestionCount > 0 ? ` (${quiz.practiceQuestionCount} câu ngẫu nhiên)` : ""}.
+              </span>
             </button>
             <button className="quiz-mode" onClick={() => begin("exam")}>
               <span className="quiz-mode-ico">⏱️</span>
@@ -542,38 +555,82 @@ export default function QuizPage() {
                 )}
               </div>
               <span className="muted">
-                {quiz.timeLimitMin > 0 ? `Giới hạn ${quiz.timeLimitMin} phút, ` : "Không giới hạn thời gian, "}chấm điểm khi nộp bài.
+                {quiz.timeLimitMin > 0 ? `Giới hạn ${quiz.timeLimitMin} phút, ` : "Không giới hạn thời gian, "}
+                {quiz.examQuestionCount > 0 ? `lấy ${quiz.examQuestionCount} câu ngẫu nhiên, ` : ""}chấm điểm khi nộp bài.
                 {limitInfo.limited && ` (Tối đa ${limitInfo.max} lượt/giờ)`}
               </span>
             </button>
             <button className="quiz-mode" onClick={() => { setOpen(new Set()); setPhase("study"); }}>
               <span className="quiz-mode-ico">📖</span>
               <b>Xem lời giải</b>
-              <span className="muted">Đọc toàn bộ đáp án đúng và giải thích, không chấm điểm.</span>
+              <span className="muted">Đọc toàn bộ {total} câu, đáp án đúng và giải thích, không chấm điểm.</span>
             </button>
           </div>
 
-          <div className="quiz-opts-row">
+          <div className="quiz-opts-row" style={{ flexWrap: "wrap", gap: 16, alignItems: "center" }}>
             {total > 1 && (
-              <label className="field" style={{ margin: 0, maxWidth: 160 }}>
-                <span>Số câu</span>
-                <input
-                  type="number" min={1} max={total} value={opts.count || ""}
-                  onChange={(e) => {
-                    const v = Math.min(total, Math.max(1, parseInt(e.target.value, 10) || 1));
-                    setOptsOver((o) => ({ ...o, count: v }));
-                  }}
-                />
-              </label>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ fontSize: ".86rem", fontWeight: 700 }}>Số câu muốn làm:</span>
+                  <input
+                    type="number"
+                    min={1}
+                    max={total}
+                    value={optsOver.count !== undefined ? optsOver.count : (quiz.examQuestionCount > 0 ? quiz.examQuestionCount : (quiz.practiceQuestionCount > 0 ? quiz.practiceQuestionCount : total))}
+                    onChange={(e) => {
+                      const v = Math.min(total, Math.max(1, parseInt(e.target.value, 10) || 1));
+                      setOptsOver((o) => ({ ...o, count: v }));
+                    }}
+                    style={{ width: 80, padding: "5px 8px", borderRadius: 8, fontSize: ".9rem", textAlign: "center" }}
+                  />
+                  <span className="muted" style={{ fontSize: ".82rem" }}>/ {total} câu trong ngân hàng</span>
+                </div>
+                {/* Nút bấm nhanh các mức câu hỏi */}
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  {[10, 20, 40, 50, 100].filter((c) => c < total).map((c) => (
+                    <button
+                      key={c}
+                      type="button"
+                      className="btn btn-ghost btn-sm"
+                      style={{
+                        padding: "2px 8px",
+                        fontSize: ".75rem",
+                        borderRadius: 6,
+                        borderColor: optsOver.count === c ? "var(--accent)" : undefined,
+                        background: optsOver.count === c ? "rgba(168, 85, 247, 0.15)" : undefined,
+                      }}
+                      onClick={() => setOptsOver((o) => ({ ...o, count: c }))}
+                    >
+                      {c} câu
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-sm"
+                    style={{
+                      padding: "2px 8px",
+                      fontSize: ".75rem",
+                      borderRadius: 6,
+                      borderColor: optsOver.count === total || optsOver.count === undefined ? "var(--accent)" : undefined,
+                      background: optsOver.count === total || optsOver.count === undefined ? "rgba(168, 85, 247, 0.15)" : undefined,
+                    }}
+                    onClick={() => setOptsOver((o) => ({ ...o, count: total }))}
+                  >
+                    Tất cả ({total})
+                  </button>
+                </div>
+              </div>
             )}
-            <label className="quiz-check">
-              <input type="checkbox" checked={opts.shuffleQuestions} onChange={(e) => setOptsOver((o) => ({ ...o, shuffleQuestions: e.target.checked }))} />
-              Xáo trộn câu hỏi
-            </label>
-            <label className="quiz-check">
-              <input type="checkbox" checked={opts.shuffleOptions} onChange={(e) => setOptsOver((o) => ({ ...o, shuffleOptions: e.target.checked }))} />
-              Xáo trộn đáp án
-            </label>
+            <div style={{ display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
+              <label className="quiz-check">
+                <input type="checkbox" checked={opts.shuffleQuestions} onChange={(e) => setOptsOver((o) => ({ ...o, shuffleQuestions: e.target.checked }))} />
+                Xáo trộn câu hỏi
+              </label>
+              <label className="quiz-check">
+                <input type="checkbox" checked={opts.shuffleOptions} onChange={(e) => setOptsOver((o) => ({ ...o, shuffleOptions: e.target.checked }))} />
+                Xáo trộn đáp án
+              </label>
+            </div>
           </div>
 
           {/* Bảng xếp hạng (Leaderboard) */}

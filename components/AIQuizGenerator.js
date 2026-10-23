@@ -2,11 +2,160 @@
 import { useState, useRef } from "react";
 import { QUESTION_TYPES } from "@/lib/quiz";
 
+/**
+ * Trích xuất nội dung tài liệu trực tiếp trên trình duyệt
+ */
+async function extractDocumentContentClient(file, rawText) {
+  if (file && file.size > 0) {
+    const fileName = (file.name || "").toLowerCase();
+
+    if (fileName.endsWith(".pdf")) {
+      const base64Data = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const res = String(reader.result || "");
+          const b64 = res.includes(",") ? res.split(",")[1] : res;
+          resolve(b64);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+
+      return [
+        {
+          inlineData: {
+            mimeType: "application/pdf",
+            data: base64Data,
+          },
+        },
+      ];
+    }
+
+    if (fileName.endsWith(".docx")) {
+      try {
+        const arrayBuffer = await file.arrayBuffer();
+        const mammoth = await import("mammoth");
+        const result = await mammoth.extractRawText({ arrayBuffer });
+        const text = (result.value || "").trim();
+        if (!text) throw new Error("Tệp Word (.docx) không có nội dung văn bản.");
+        return [{ text: `TÀI LIỆU BÀI HỌC (FILE WORD ${file.name}):\n\n${text}` }];
+      } catch (err) {
+        console.warn("Client mammoth extract error:", err);
+        throw new Error(`Lỗi đọc tệp Word: ${err.message}`);
+      }
+    }
+
+    if (fileName.endsWith(".pptx")) {
+      try {
+        const arrayBuffer = await file.arrayBuffer();
+        const JSZip = (await import("jszip")).default;
+        const zip = await JSZip.loadAsync(arrayBuffer);
+
+        const slideFiles = Object.keys(zip.files).filter((name) =>
+          /^ppt\/slides\/slide\d+\.xml$/i.test(name)
+        );
+        slideFiles.sort((a, b) => {
+          const numA = parseInt(a.replace(/\D/g, ""), 10) || 0;
+          const numB = parseInt(b.replace(/\D/g, ""), 10) || 0;
+          return numA - numB;
+        });
+
+        const slideTexts = [];
+        for (const sf of slideFiles) {
+          const xml = await zip.file(sf).async("text");
+          const matches = xml.match(/<a:t(?:\s+[^>]*)?>([\s\S]*?)<\/a:t>/gi) || [];
+          const textPieces = matches.map((m) => m.replace(/<[^>]+>/g, "").trim()).filter(Boolean);
+          const slideNum = sf.replace(/\D/g, "");
+          if (textPieces.length > 0) {
+            slideTexts.push(`[Slide ${slideNum}]:\n${textPieces.join(" ")}`);
+          }
+        }
+
+        const noteFiles = Object.keys(zip.files).filter((name) =>
+          /^ppt\/notesSlides\/notesSlide\d+\.xml$/i.test(name)
+        );
+        for (const nf of noteFiles) {
+          const xml = await zip.file(nf).async("text");
+          const matches = xml.match(/<a:t(?:\s+[^>]*)?>([\s\S]*?)<\/a:t>/gi) || [];
+          const textPieces = matches.map((m) => m.replace(/<[^>]+>/g, "").trim()).filter(Boolean);
+          const noteNum = nf.replace(/\D/g, "");
+          if (textPieces.length > 0) {
+            slideTexts.push(`[Ghi chú Slide ${noteNum}]:\n${textPieces.join(" ")}`);
+          }
+        }
+
+        const fullPptx = slideTexts.join("\n\n");
+        if (!fullPptx.trim()) throw new Error("Không tìm thấy nội dung văn bản trong các slide PowerPoint.");
+        return [{ text: `TÀI LIỆU BÀI GIẢNG (SLIDE POWERPOINT ${file.name}):\n\n${fullPptx}` }];
+      } catch (err) {
+        console.warn("Client pptx extract error:", err);
+        throw new Error(`Lỗi đọc tệp PowerPoint: ${err.message}`);
+      }
+    }
+
+    // Text / md
+    const textContent = await file.text();
+    if (!textContent.trim()) throw new Error("Tệp văn bản trống.");
+    return [{ text: `TÀI LIỆU BÀI HỌC:\n\n${textContent.trim()}` }];
+  }
+
+  if (rawText && rawText.trim()) {
+    return [{ text: `NỘI DUNG BÀI HỌC:\n\n${rawText.trim()}` }];
+  }
+
+  throw new Error("Vui lòng tải tệp tài liệu hoặc dán nội dung bài học.");
+}
+
+/**
+ * Lấy model Gemini tốt nhất từ Google API trực tiếp cho key này
+ */
+async function getBestGeminiModelClient(apiKey) {
+  try {
+    const listRes = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`,
+      { cache: "no-store" }
+    );
+    if (listRes.ok) {
+      const data = await listRes.json();
+      const models = (data.models || [])
+        .filter(
+          (m) =>
+            Array.isArray(m.supportedGenerationMethods) &&
+            m.supportedGenerationMethods.includes("generateContent")
+        )
+        .map((m) => m.name.replace(/^models\//, ""));
+
+      if (models.length > 0) {
+        const priorityOrder = [
+          (m) => m.startsWith("gemini-2.0-flash") && !m.includes("lite") && !m.includes("thinking"),
+          (m) => m === "gemini-1.5-flash",
+          (m) => m.startsWith("gemini-1.5-flash-002"),
+          (m) => m.startsWith("gemini-1.5-flash-001"),
+          (m) => m.includes("2.0-flash"),
+          (m) => m.includes("1.5-flash"),
+          (m) => m.includes("flash"),
+          (m) => m.includes("pro"),
+        ];
+
+        for (const check of priorityOrder) {
+          const found = models.find(check);
+          if (found) return found;
+        }
+
+        return models[0];
+      }
+    }
+  } catch (err) {
+    console.warn("Client could not list models, fallback to gemini-2.0-flash", err);
+  }
+  return "gemini-2.0-flash";
+}
+
 export default function AIQuizGenerator({ isOpen, onClose, onApply, existingCount = 0 }) {
   const [tab, setTab] = useState("file"); // "file" | "text"
   const [file, setFile] = useState(null);
   const [text, setText] = useState("");
-  const [count, setCount] = useState(10);
+  const [count, setCount] = useState(20);
   const [difficulty, setDifficulty] = useState("mixed"); // easy | medium | hard | mixed
   const [types, setTypes] = useState({
     single: true,
@@ -28,6 +177,7 @@ export default function AIQuizGenerator({ isOpen, onClose, onApply, existingCoun
 
   const [loading, setLoading] = useState(false);
   const [loadingStep, setLoadingStep] = useState("");
+  const [progressPercent, setProgressPercent] = useState(0);
   const [error, setError] = useState("");
   const [result, setResult] = useState(null);
 
@@ -47,8 +197,8 @@ export default function AIQuizGenerator({ isOpen, onClose, onApply, existingCoun
   const handleFileChange = (e) => {
     const f = e.target.files?.[0];
     if (f) {
-      if (f.size > 10 * 1024 * 1024) {
-        setError("Tệp quá lớn (> 10MB). Vui lòng chọn tệp nhỏ hơn.");
+      if (f.size > 20 * 1024 * 1024) {
+        setError("Tệp quá lớn (> 20MB). Vui lòng chọn tệp nhỏ hơn.");
         return;
       }
       setFile(f);
@@ -72,8 +222,8 @@ export default function AIQuizGenerator({ isOpen, onClose, onApply, existingCoun
         setError("Định dạng không được hỗ trợ. Vui lòng chọn tệp Word (.docx), PowerPoint (.pptx), PDF (.pdf), hoặc .txt");
         return;
       }
-      if (f.size > 10 * 1024 * 1024) {
-        setError("Tệp quá lớn (> 10MB). Vui lòng chọn tệp nhỏ hơn.");
+      if (f.size > 20 * 1024 * 1024) {
+        setError("Tệp quá lớn (> 20MB). Vui lòng chọn tệp nhỏ hơn.");
         return;
       }
       setFile(f);
@@ -88,13 +238,17 @@ export default function AIQuizGenerator({ isOpen, onClose, onApply, existingCoun
 
   const toggleType = (key) => {
     const next = { ...types, [key]: !types[key] };
-    // Đảm bảo chọn ít nhất 1 loại
     if (!next.single && !next.multiple && !next.truefalse) {
       return;
     }
     setTypes(next);
   };
 
+  /**
+   * Gọi AI tạo câu hỏi:
+   * Nếu có key cá nhân -> Xử lý trực tiếp trên trình duyệt (không bao giờ bị Vercel 10s Timeout, tạo được đến 200 câu chia đợt).
+   * Nếu không có key cá nhân -> Gửi lên API server Next.js.
+   */
   const handleGenerate = async () => {
     setError("");
     setResult(null);
@@ -114,36 +268,184 @@ export default function AIQuizGenerator({ isOpen, onClose, onApply, existingCoun
       .join(",");
 
     setLoading(true);
-    setLoadingStep("Đang tải dữ liệu và phân tích tài liệu...");
+    setProgressPercent(5);
+    setLoadingStep("Đang chuẩn bị và phân tích tài liệu...");
 
     try {
-      const formData = new FormData();
-      if (tab === "file" && file) {
-        formData.append("file", file);
+      const activeKey = apiKey.trim();
+
+      // TRƯỜNG HỢP 1: Có API Key riêng -> Xử lý trực tiếp từ Client (Bỏ qua giới hạn Vercel)
+      if (activeKey) {
+        setLoadingStep("Đang đọc nội dung tài liệu...");
+        const docParts = await extractDocumentContentClient(tab === "file" ? file : null, text);
+
+        setLoadingStep("Đang kết nối Google Gemini API...");
+        const modelName = await getBestGeminiModelClient(activeKey);
+
+        const difficultyDesc = {
+          easy: "Dễ (Nhận biết định nghĩa, sự kiện, công thức cơ bản)",
+          medium: "Trung bình (Thông hiểu, giải thích hiện tượng, so sánh)",
+          hard: "Khó (Vận dụng cao, tư duy logic, tính toán chuyên sâu)",
+          mixed: "Phân bổ hợp lý: 40% Nhận biết, 35% Thông hiểu, 25% Vận dụng",
+        }[difficulty] || "Đa dạng mức độ";
+
+        // Chia đợt tạo (Batching): Mỗi đợt 20-25 câu để tránh chạm giới hạn token của LLM và sinh câu hỏi đa dạng
+        const targetTotal = Math.min(200, Math.max(1, count));
+        const batchSize = 25;
+        const totalBatches = Math.ceil(targetTotal / batchSize);
+
+        let allQuestions = [];
+        let titleSuggestion = "";
+        let summaryDoc = "";
+
+        for (let b = 0; b < totalBatches; b++) {
+          const batchCount = Math.min(batchSize, targetTotal - allQuestions.length);
+          const percent = Math.round(((b) / totalBatches) * 90) + 10;
+          setProgressPercent(percent);
+
+          setLoadingStep(
+            totalBatches > 1
+              ? `Đang tạo đợt ${b + 1}/${totalBatches}: đã có ${allQuestions.length}/${targetTotal} câu (${percent}%)...`
+              : `AI đang phân tích tài liệu và biên soạn ${targetTotal} câu hỏi...`
+          );
+
+          const previousQuestionsContext = allQuestions
+            .slice(-12)
+            .map((q, idx) => `${idx + 1}. ${q.text.slice(0, 45)}`)
+            .join(" | ");
+
+          const systemInstruction = `Bạn là chuyên gia giáo dục và khảo thí hàng đầu. Nhiệm vụ của bạn là đọc kỹ tài liệu bài học và biên soạn CHÍNH XÁC ${batchCount} CÂU HỎI TRẮC NGHIỆM bằng tiếng Việt, chuẩn xác và không có lỗi sai kiến thức.
+TIÊU CHUẨN BIÊN SOẠN:
+1. Số lượng: Đúng ${batchCount} câu hỏi.
+2. Mức độ: ${difficultyDesc}.
+3. Các dạng câu hỏi: ${selectedTypes} ("single" có 4 đáp án; "multiple" có 4 đáp án; "truefalse" có 2 đáp án: ["Đúng", "Sai"]).
+4. Mỗi câu hỏi BẮT BUỘC có "explanation" giải thích rõ ràng.
+${allQuestions.length > 0 ? `5. LƯU Ý ĐỢT ${b + 1}: Các câu hỏi đã tạo trước đó gồm: "${previousQuestionsContext}". Hãy tạo các câu hỏi MỚI HOÀN TOÀN, khai thác các góc độ, bài tập, công thức và chủ đề khác trong tài liệu để bài thi toàn diện.` : ""}
+${customPrompt ? `6. Yêu cầu riêng từ giáo viên: ${customPrompt}` : ""}`;
+
+          const promptText = `Dựa vào tài liệu trên, hãy sinh ${batchCount} câu hỏi trắc nghiệm dưới dạng JSON thuần túy:
+{
+  "title": "Gợi ý tiêu đề bộ đề",
+  "summary": "Tóm tắt ngắn gọn",
+  "questions": [
+    {
+      "text": "Nội dung câu hỏi...",
+      "type": "single",
+      "options": ["Phương án A", "Phương án B", "Phương án C", "Phương án D"],
+      "correct": [0],
+      "explanation": "Lời giải thích cặn kẽ..."
+    }
+  ]
+}`;
+
+          const contents = [{ role: "user", parts: [...docParts, { text: promptText }] }];
+          const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${activeKey}`;
+
+          const res = await fetch(apiUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              contents,
+              systemInstruction: { parts: [{ text: systemInstruction }] },
+              generationConfig: {
+                responseMimeType: "application/json",
+                temperature: 0.35,
+              },
+            }),
+          });
+
+          if (!res.ok) {
+            const errRaw = await res.text();
+            let msg = `Lỗi từ Gemini API (${res.status})`;
+            try {
+              const errObj = JSON.parse(errRaw);
+              if (errObj?.error?.message) msg = errObj.error.message;
+            } catch {}
+            throw new Error(msg);
+          }
+
+          const geminiData = await res.json();
+          let rawJson = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+          rawJson = rawJson.replace(/^```json\s*/i, "").replace(/\s*```$/, "").trim();
+
+          const parsed = JSON.parse(rawJson);
+          if (!titleSuggestion && parsed.title) titleSuggestion = parsed.title;
+          if (!summaryDoc && parsed.summary) summaryDoc = parsed.summary;
+
+          const batchQuestions = (parsed.questions || []).map((q, idx) => {
+            const type = ["single", "multiple", "truefalse"].includes(q.type) ? q.type : "single";
+            let options = Array.isArray(q.options) ? q.options.map(String) : [];
+            if (type === "truefalse") options = ["Đúng", "Sai"];
+            else if (options.length < 2) options = ["Phương án A", "Phương án B", "Phương án C", "Phương án D"];
+
+            let correct = Array.isArray(q.correct)
+              ? q.correct.map(Number).filter((c) => !isNaN(c) && c >= 0 && c < options.length)
+              : [0];
+            if (!correct.length) correct = [0];
+
+            return {
+              id: `q-ai-${Date.now().toString(36)}-${allQuestions.length + idx}-${Math.random().toString(36).slice(2, 6)}`,
+              type,
+              text: (q.text || `Câu hỏi ${allQuestions.length + idx + 1}`).trim(),
+              options,
+              correct,
+              explanation: (q.explanation || "").trim(),
+            };
+          });
+
+          allQuestions = [...allQuestions, ...batchQuestions];
+        }
+
+        setProgressPercent(100);
+        setResult({
+          success: true,
+          modelUsed: `${modelName} (Direct Client)`,
+          titleSuggestion,
+          summary: summaryDoc,
+          count: allQuestions.length,
+          questions: allQuestions,
+        });
       } else {
-        formData.append("text", text);
+        // TRƯỜNG HỢP 2: Không có key riêng -> Gọi qua Server API Route
+        const formData = new FormData();
+        if (tab === "file" && file) {
+          formData.append("file", file);
+        } else {
+          formData.append("text", text);
+        }
+        formData.append("count", count.toString());
+        formData.append("difficulty", difficulty);
+        formData.append("types", selectedTypes);
+        formData.append("customPrompt", customPrompt);
+
+        setLoadingStep("AI đang phân tích tài liệu và biên soạn đề thi...");
+
+        const res = await fetch("/api/ai/quiz-generate", {
+          method: "POST",
+          body: formData,
+        });
+
+        // Đọc raw text trước để tránh lỗi SyntaxError Unexpected token 'A' khi server trả về HTML lỗi
+        const rawResponse = await res.text();
+        let data;
+        try {
+          data = JSON.parse(rawResponse);
+        } catch {
+          if (res.status === 504 || rawResponse.includes("TIMEOUT") || rawResponse.includes("An error occurred")) {
+            throw new Error(
+              "Máy chủ Vercel đã ngắt kết nối do vượt quá giới hạn 10 giây (Server Timeout). Bạn vui lòng nhập Google Gemini API Key riêng (lấy miễn phí tại aistudio.google.com) ở ô cấu hình phía trên để tạo trực tiếp không bị giới hạn thời gian và có thể tạo tới 200 câu!"
+            );
+          }
+          throw new Error(`Lỗi máy chủ (${res.status}): ${rawResponse.slice(0, 160)}`);
+        }
+
+        if (!res.ok) {
+          throw new Error(data.error || `Lỗi máy chủ (${res.status})`);
+        }
+
+        setProgressPercent(100);
+        setResult(data);
       }
-      formData.append("count", count.toString());
-      formData.append("difficulty", difficulty);
-      formData.append("types", selectedTypes);
-      formData.append("customPrompt", customPrompt);
-      if (apiKey.trim()) {
-        formData.append("apiKey", apiKey.trim());
-      }
-
-      setLoadingStep("AI đang phân tích kiến thức trọng tâm & biên soạn câu hỏi...");
-
-      const res = await fetch("/api/ai/quiz-generate", {
-        method: "POST",
-        body: formData,
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || `Lỗi máy chủ (${res.status})`);
-      }
-
-      setResult(data);
     } catch (err) {
       console.error("AI Generate Error:", err);
       setError(err.message || "Đã xảy ra lỗi khi tạo đề bằng AI.");
@@ -167,9 +469,9 @@ export default function AIQuizGenerator({ isOpen, onClose, onApply, existingCoun
         className="ai-modal-container glass-card"
         onClick={(e) => e.stopPropagation()}
         style={{
-          maxWidth: 860,
-          width: "94%",
-          maxHeight: "90vh",
+          maxWidth: 880,
+          width: "95%",
+          maxHeight: "92vh",
           display: "flex",
           flexDirection: "column",
           borderRadius: 20,
@@ -208,10 +510,10 @@ export default function AIQuizGenerator({ isOpen, onClose, onApply, existingCoun
             </div>
             <div>
               <h3 style={{ margin: 0, fontSize: "1.18rem", fontWeight: 700 }}>
-                Trợ lý AI Tạo Đề Thi Tự Động
+                Trợ lý AI Tạo Đề Thi Tự Động (Lên đến 200 câu)
               </h3>
               <p className="muted" style={{ margin: "2px 0 0", fontSize: ".82rem" }}>
-                Phân tích tài liệu Word (.docx), PDF, hoặc văn bản để tự động sinh câu hỏi trắc nghiệm chuẩn xác
+                Phân tích tài liệu Word (.docx), PowerPoint (.pptx), PDF, hoặc văn bản để tự động sinh câu hỏi trắc nghiệm chuẩn xác
               </p>
             </div>
           </div>
@@ -234,17 +536,20 @@ export default function AIQuizGenerator({ isOpen, onClose, onApply, existingCoun
               style={{
                 marginBottom: 16,
                 borderRadius: 10,
-                padding: "10px 14px",
+                padding: "12px 16px",
                 display: "flex",
                 justifyContent: "space-between",
-                alignItems: "center",
+                alignItems: "flex-start",
+                gap: 12,
+                fontSize: ".88rem",
+                lineHeight: 1.5,
               }}
             >
               <span>⚠️ {error}</span>
               <button
                 type="button"
                 onClick={() => setError("")}
-                style={{ background: "none", border: "none", color: "inherit", cursor: "pointer" }}
+                style={{ background: "none", border: "none", color: "inherit", cursor: "pointer", fontSize: "1rem" }}
               >
                 ✕
               </button>
@@ -256,8 +561,8 @@ export default function AIQuizGenerator({ isOpen, onClose, onApply, existingCoun
               {/* API Key setting bar */}
               <div
                 style={{
-                  background: "hsla(0 0% 100% / .03)",
-                  border: "1px solid var(--glass-border)",
+                  background: apiKey ? "rgba(16, 185, 129, 0.08)" : "hsla(0 0% 100% / .03)",
+                  border: apiKey ? "1px solid rgba(16, 185, 129, 0.3)" : "1px solid var(--glass-border)",
                   borderRadius: 12,
                   padding: "10px 14px",
                   marginBottom: 18,
@@ -269,10 +574,10 @@ export default function AIQuizGenerator({ isOpen, onClose, onApply, existingCoun
                 }}
               >
                 <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: ".85rem" }}>
-                  <span>🔑</span>
+                  <span>{apiKey ? "✅" : "🔑"}</span>
                   <span>
                     Google Gemini API Key:{" "}
-                    <b>{apiKey ? "Đã cài đặt key riêng" : "Mặc định hệ thống (Server)"}</b>
+                    <b>{apiKey ? "Đã cài đặt key riêng (Chạy trực tiếp không giới hạn timeout)" : "Mặc định hệ thống (Server)"}</b>
                   </span>
                 </div>
                 <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
@@ -306,7 +611,7 @@ export default function AIQuizGenerator({ isOpen, onClose, onApply, existingCoun
                   }}
                 >
                   <label style={{ fontSize: ".82rem", fontWeight: 600, display: "block", marginBottom: 6 }}>
-                    Nhập Gemini API Key của bạn (Lưu an toàn tại trình duyệt của bạn):
+                    Nhập Gemini API Key của bạn (Lưu an toàn tại trình duyệt của bạn - giúp tạo đề siêu tốc, không bị giới hạn thời gian):
                   </label>
                   <div style={{ display: "flex", gap: 8 }}>
                     <input
@@ -412,7 +717,7 @@ export default function AIQuizGenerator({ isOpen, onClose, onApply, existingCoun
                         Kéo thả tệp vào đây hoặc nhấp để chọn tệp
                       </div>
                       <div className="muted" style={{ fontSize: ".83rem" }}>
-                        Hỗ trợ Microsoft Word (<b>.docx</b>), PowerPoint (<b>.pptx</b>), Adobe PDF (<b>.pdf</b>), và tệp văn bản (<b>.txt</b>) tối đa 10MB
+                        Hỗ trợ Microsoft Word (<b>.docx</b>), PowerPoint (<b>.pptx</b>), Adobe PDF (<b>.pdf</b>), và tệp văn bản (<b>.txt</b>) tối đa 20MB
                       </div>
                     </div>
                   )}
@@ -445,7 +750,7 @@ export default function AIQuizGenerator({ isOpen, onClose, onApply, existingCoun
               <div
                 style={{
                   display: "grid",
-                  gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
                   gap: 16,
                   background: "hsla(0 0% 100% / .02)",
                   border: "1px solid var(--glass-border)",
@@ -456,22 +761,60 @@ export default function AIQuizGenerator({ isOpen, onClose, onApply, existingCoun
               >
                 {/* Count */}
                 <div>
-                  <label style={{ fontSize: ".85rem", fontWeight: 700, display: "block", marginBottom: 6 }}>
-                    📊 Số lượng câu hỏi: <b style={{ color: "var(--accent)" }}>{count} câu</b>
-                  </label>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                    <label style={{ fontSize: ".85rem", fontWeight: 700 }}>
+                      📊 Số lượng câu hỏi:
+                    </label>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      <input
+                        type="number"
+                        min={3}
+                        max={200}
+                        value={count}
+                        onChange={(e) => setCount(Math.min(200, Math.max(1, parseInt(e.target.value, 10) || 1)))}
+                        style={{
+                          width: 65,
+                          textAlign: "center",
+                          fontWeight: 700,
+                          color: "var(--accent)",
+                          padding: "3px 6px",
+                          borderRadius: 8,
+                          fontSize: ".92rem",
+                        }}
+                      />
+                      <span style={{ fontSize: ".82rem", fontWeight: 600 }}>câu</span>
+                    </div>
+                  </div>
                   <input
                     type="range"
                     min={3}
-                    max={30}
+                    max={200}
                     step={1}
                     value={count}
                     onChange={(e) => setCount(parseInt(e.target.value, 10))}
                     style={{ width: "100%", accentColor: "var(--accent)" }}
                   />
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: ".75rem" }} className="muted">
-                    <span>3 câu</span>
-                    <span>15 câu</span>
-                    <span>30 câu</span>
+                  {/* Preset chips */}
+                  <div style={{ display: "flex", gap: 6, marginTop: 6, flexWrap: "wrap" }}>
+                    {[10, 25, 50, 100, 150, 200].map((c) => (
+                      <button
+                        key={c}
+                        type="button"
+                        className="btn btn-ghost btn-sm"
+                        style={{
+                          padding: "2px 8px",
+                          fontSize: ".75rem",
+                          borderRadius: 6,
+                          background: count === c ? "rgba(168, 85, 247, 0.25)" : undefined,
+                          borderColor: count === c ? "var(--accent)" : undefined,
+                          color: count === c ? "var(--accent)" : undefined,
+                          fontWeight: count === c ? 700 : 500,
+                        }}
+                        onClick={() => setCount(c)}
+                      >
+                        {c} câu
+                      </button>
+                    ))}
                   </div>
                 </div>
 
@@ -535,10 +878,30 @@ export default function AIQuizGenerator({ isOpen, onClose, onApply, existingCoun
                   type="text"
                   value={customPrompt}
                   onChange={(e) => setCustomPrompt(e.target.value)}
-                  placeholder="Ví dụ: Tập trung vào phần bài tập tính toán, tránh hỏi số liệu lịch sử cụ thể..."
+                  placeholder="Ví dụ: Tập trung vào phần bài tập tính toán, lý thuyết trọng tâm chương 1..."
                   style={{ width: "100%", borderRadius: 8, fontSize: ".88rem" }}
                 />
               </div>
+
+              {/* Loading progress bar if generating */}
+              {loading && (
+                <div style={{ marginBottom: 16 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: ".82rem", marginBottom: 4 }}>
+                    <span style={{ color: "var(--accent)", fontWeight: 600 }}>{loadingStep || "Đang xử lý..."}</span>
+                    <span>{progressPercent}%</span>
+                  </div>
+                  <div style={{ height: 6, background: "rgba(255,255,255,0.1)", borderRadius: 99, overflow: "hidden" }}>
+                    <div
+                      style={{
+                        height: "100%",
+                        width: `${progressPercent}%`,
+                        background: "linear-gradient(90deg, #6366f1, #a855f7, #ec4899)",
+                        transition: "width .3s ease",
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
 
               {/* Generate Button */}
               <button
@@ -570,7 +933,7 @@ export default function AIQuizGenerator({ isOpen, onClose, onApply, existingCoun
                 ) : (
                   <>
                     <span style={{ fontSize: "1.2rem" }}>🚀</span>
-                    <span>Bắt đầu Tạo Đề Thi Bằng AI</span>
+                    <span>Bắt đầu Tạo {count} Câu Hỏi Bằng AI</span>
                   </>
                 )}
               </button>
