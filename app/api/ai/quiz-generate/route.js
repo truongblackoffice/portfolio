@@ -1,39 +1,184 @@
 import { NextResponse } from "next/server";
 import mammoth from "mammoth";
+import JSZip from "jszip";
 
 export const maxDuration = 60; // Dynamic route timeout for Next.js
 
-// Danh sách model ưu tiên thử nghiệm
-const CANDIDATE_MODELS = [
-  "gemini-2.5-flash",
-  "gemini-1.5-flash",
-  "gemini-1.5-flash-latest",
+// Danh sách các model fallback dự phòng nếu không list được models từ API
+const DEFAULT_CANDIDATE_MODELS = [
+  { apiVersion: "v1beta", model: "gemini-2.0-flash" },
+  { apiVersion: "v1beta", model: "gemini-1.5-flash" },
+  { apiVersion: "v1", model: "gemini-1.5-flash" },
+  { apiVersion: "v1beta", model: "gemini-2.0-flash-exp" },
+  { apiVersion: "v1beta", model: "gemini-1.5-flash-002" },
+  { apiVersion: "v1beta", model: "gemini-1.5-flash-001" },
+  { apiVersion: "v1beta", model: "gemini-1.5-pro" },
+  { apiVersion: "v1", model: "gemini-1.5-pro" },
 ];
 
-async function callGeminiApi({ apiKey, contents, systemInstruction, modelIndex = 0 }) {
-  const modelName = CANDIDATE_MODELS[modelIndex] || CANDIDATE_MODELS[0];
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+/**
+ * Trích xuất toàn bộ văn bản và ghi chú bài giảng từ tệp PowerPoint (.pptx)
+ */
+async function extractTextFromPptx(buffer) {
+  const zip = await JSZip.loadAsync(buffer);
 
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      contents,
-      systemInstruction: { parts: [{ text: systemInstruction }] },
-      generationConfig: {
-        responseMimeType: "application/json",
-        temperature: 0.3,
-      },
-    }),
+  // Lấy các slide XML (ppt/slides/slide1.xml, ppt/slides/slide2.xml, ...)
+  const slideFiles = Object.keys(zip.files).filter((name) =>
+    /^ppt\/slides\/slide\d+\.xml$/i.test(name)
+  );
+
+  slideFiles.sort((a, b) => {
+    const numA = parseInt(a.replace(/\D/g, ""), 10) || 0;
+    const numB = parseInt(b.replace(/\D/g, ""), 10) || 0;
+    return numA - numB;
   });
 
-  // Nếu gặp lỗi 404 (model không tìm thấy) và còn model fallback, thử model tiếp theo
-  if (!res.ok && res.status === 404 && modelIndex < CANDIDATE_MODELS.length - 1) {
-    console.warn(`Model ${modelName} trả về 404, thử fallback sang ${CANDIDATE_MODELS[modelIndex + 1]}...`);
-    return callGeminiApi({ apiKey, contents, systemInstruction, modelIndex: modelIndex + 1 });
+  const slideTexts = [];
+
+  for (const sf of slideFiles) {
+    const xml = await zip.file(sf).async("text");
+    const matches = xml.match(/<a:t(?:\s+[^>]*)?>([\s\S]*?)<\/a:t>/gi) || [];
+    const textPieces = matches
+      .map((m) => m.replace(/<[^>]+>/g, "").trim())
+      .filter(Boolean);
+
+    const slideNum = sf.replace(/\D/g, "");
+    if (textPieces.length > 0) {
+      slideTexts.push(`[Slide ${slideNum}]:\n${textPieces.join(" ")}`);
+    }
   }
 
-  return { res, modelUsed: modelName };
+  // Lấy ghi chú bài giảng (speaker notes) nếu có
+  const noteFiles = Object.keys(zip.files).filter((name) =>
+    /^ppt\/notesSlides\/notesSlide\d+\.xml$/i.test(name)
+  );
+  for (const nf of noteFiles) {
+    const xml = await zip.file(nf).async("text");
+    const matches = xml.match(/<a:t(?:\s+[^>]*)?>([\s\S]*?)<\/a:t>/gi) || [];
+    const textPieces = matches
+      .map((m) => m.replace(/<[^>]+>/g, "").trim())
+      .filter(Boolean);
+    const noteNum = nf.replace(/\D/g, "");
+    if (textPieces.length > 0) {
+      slideTexts.push(`[Ghi chú bài giảng Slide ${noteNum}]:\n${textPieces.join(" ")}`);
+    }
+  }
+
+  return slideTexts.join("\n\n");
+}
+
+/**
+ * Tự động truy vấn danh sách model được phép sử dụng từ Google API đối với API Key này
+ */
+async function getCandidateModelsForApiKey(apiKey) {
+  try {
+    const listRes = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`,
+      { cache: "no-store" }
+    );
+    if (listRes.ok) {
+      const data = await listRes.json();
+      const models = (data.models || [])
+        .filter(
+          (m) =>
+            Array.isArray(m.supportedGenerationMethods) &&
+            m.supportedGenerationMethods.includes("generateContent")
+        )
+        .map((m) => m.name.replace(/^models\//, ""));
+
+      if (models.length > 0) {
+        const prioritized = [];
+        const priorityOrder = [
+          (m) => m.startsWith("gemini-2.0-flash") && !m.includes("lite") && !m.includes("thinking"),
+          (m) => m === "gemini-1.5-flash",
+          (m) => m.startsWith("gemini-1.5-flash-002"),
+          (m) => m.startsWith("gemini-1.5-flash-001"),
+          (m) => m.includes("2.0-flash"),
+          (m) => m.includes("1.5-flash"),
+          (m) => m.includes("flash"),
+          (m) => m.includes("pro"),
+        ];
+
+        for (const check of priorityOrder) {
+          const found = models.find(check);
+          if (found && !prioritized.includes(found)) {
+            prioritized.push(found);
+          }
+        }
+
+        for (const m of models) {
+          if (!prioritized.includes(m)) {
+            prioritized.push(m);
+          }
+        }
+
+        return prioritized.map((m) => ({ apiVersion: "v1beta", model: m }));
+      }
+    }
+  } catch (err) {
+    console.warn("Could not list models from Google API:", err);
+  }
+
+  return DEFAULT_CANDIDATE_MODELS;
+}
+
+/**
+ * Gọi Google Gemini API với cơ chế tự động thử model khả dụng tiếp theo
+ */
+async function callGeminiApi({ apiKey, contents, systemInstruction }) {
+  const candidates = await getCandidateModelsForApiKey(apiKey);
+  let lastErrText = "";
+  let lastStatus = 500;
+
+  for (const { apiVersion, model } of candidates) {
+    const url = `https://generativelanguage.googleapis.com/${apiVersion}/models/${model}:generateContent?key=${apiKey}`;
+
+    try {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents,
+          systemInstruction: { parts: [{ text: systemInstruction }] },
+          generationConfig: {
+            responseMimeType: "application/json",
+            temperature: 0.3,
+          },
+        }),
+      });
+
+      if (res.ok) {
+        return { res, modelUsed: `${model} (${apiVersion})` };
+      }
+
+      lastStatus = res.status;
+      lastErrText = await res.text();
+      console.warn(
+        `Model ${model} (${apiVersion}) không khả dụng (${res.status}): ${lastErrText.slice(0, 140)}... Đang thử model tiếp theo...`
+      );
+
+      // Nếu là lỗi sai API Key hoàn toàn, dừng lại ngay để thông báo cho người dùng
+      if (lastStatus === 400 && lastErrText.includes("API_KEY_INVALID")) {
+        break;
+      }
+      if (lastStatus === 403 && lastErrText.includes("PERMISSION_DENIED")) {
+        break;
+      }
+    } catch (fetchErr) {
+      console.error(`Fetch error for ${model}:`, fetchErr);
+    }
+  }
+
+  return {
+    res: new Response(
+      lastErrText || JSON.stringify({ error: "Không tìm thấy model Gemini phù hợp với API Key này." }),
+      {
+        status: lastStatus,
+        headers: { "Content-Type": "application/json" },
+      }
+    ),
+    modelUsed: "none",
+  };
 }
 
 export async function POST(req) {
@@ -78,12 +223,26 @@ export async function POST(req) {
           const result = await mammoth.extractRawText({ buffer });
           const text = (result.value || "").trim();
           if (!text) {
-            return NextResponse.json({ error: "Không tìm thấy nội dung văn bản trong tệp DOCX." }, { status: 400 });
+            return NextResponse.json({ error: "Không tìm thấy nội dung văn bản trong tệp Word (.docx)." }, { status: 400 });
           }
           contentsParts.push({ text: `TÀI LIỆU BÀI HỌC (TRÍCH XUẤT TỪ FILE WORD ${file.name}):\n\n${text}` });
         } catch (docxErr) {
           console.error("Mammoth error:", docxErr);
           return NextResponse.json({ error: `Lỗi đọc tệp DOCX: ${docxErr.message}` }, { status: 400 });
+        }
+      } else if (fileName.endsWith(".pptx")) {
+        try {
+          const text = await extractTextFromPptx(buffer);
+          if (!text || !text.trim()) {
+            return NextResponse.json(
+              { error: "Không tìm thấy nội dung văn bản trong tệp PowerPoint (.pptx). Hãy đảm bảo các slide có chứa văn bản bài học." },
+              { status: 400 }
+            );
+          }
+          contentsParts.push({ text: `TÀI LIỆU BÀI GIẢNG (TRÍCH XUẤT TỪ SLIDE POWERPOINT ${file.name}):\n\n${text}` });
+        } catch (pptxErr) {
+          console.error("PPTX extract error:", pptxErr);
+          return NextResponse.json({ error: `Lỗi đọc tệp PowerPoint (.pptx): ${pptxErr.message}` }, { status: 400 });
         }
       } else if (fileName.endsWith(".pdf")) {
         // PDF gửi trực tiếp dạng multimodal base64
@@ -94,7 +253,7 @@ export async function POST(req) {
           },
         });
       } else {
-        // Text, md, v.v.
+        // Text, md, csv, v.v.
         const textContent = buffer.toString("utf-8").trim();
         if (!textContent) {
           return NextResponse.json({ error: "Tệp văn bản trống." }, { status: 400 });
@@ -105,7 +264,7 @@ export async function POST(req) {
       contentsParts.push({ text: `NỘI DUNG BÀI HỌC / VĂN BẢN ĐƯỢC CUNG CẤP:\n\n${rawText.trim()}` });
     } else {
       return NextResponse.json(
-        { error: "Vui lòng chọn tệp tài liệu (.docx, .pdf, .txt) hoặc dán nội dung bài học vào ô văn bản." },
+        { error: "Vui lòng chọn tệp tài liệu (.docx, .pptx, .pdf, .txt) hoặc dán nội dung bài học vào ô văn bản." },
         { status: 400 }
       );
     }
@@ -117,7 +276,7 @@ export async function POST(req) {
       mixed: "Phân bổ hợp lý: 40% Nhận biết, 35% Thông hiểu, 25% Vận dụng.",
     }[difficulty] || "Đa dạng các mức độ.";
 
-    const systemInstruction = `Bạn là chuyên gia giáo dục và khảo thí hàng đầu. Nhiệm vụ của bạn là đọc kỹ tài liệu bài học được cung cấp và biên soạn ĐÚNG ${count} CÂU HỎI TRẮC NGHIỆM bằng tiếng Việt, chuẩn xác và không có lỗi sai kiến thức.
+    const systemInstruction = `Bạn là chuyên gia giáo dục và khảo thí hàng đầu. Nhiệm vụ của bạn là đọc kỹ tài liệu bài học/bài giảng được cung cấp và biên soạn ĐÚNG ${count} CÂU HỎI TRẮC NGHIỆM bằng tiếng Việt, chuẩn xác và không có lỗi sai kiến thức.
 
 TIÊU CHUẨN BIÊN SOẠN:
 1. Số lượng câu hỏi: Chính xác ${count} câu.

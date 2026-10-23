@@ -236,7 +236,7 @@ export default function QuizEditor({ item, topics, onDone }) {
               </span>
             </div>
             <div className="muted" style={{ fontSize: ".84rem", marginTop: 2 }}>
-              Phân tích tệp bài học <b>Word (.docx)</b>, <b>PDF</b> hoặc văn bản để tự động tạo câu hỏi trắc nghiệm kèm đáp án và lời giải.
+              Phân tích tệp bài học <b>Word (.docx)</b>, <b>PowerPoint (.pptx)</b>, <b>PDF</b> hoặc văn bản để tự động tạo câu hỏi trắc nghiệm kèm đáp án và lời giải.
             </div>
           </div>
         </div>

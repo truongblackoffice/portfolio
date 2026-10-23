@@ -62,8 +62,14 @@ export default function AIQuizGenerator({ isOpen, onClose, onApply, existingCoun
     const f = e.dataTransfer?.files?.[0];
     if (f) {
       const name = f.name.toLowerCase();
-      if (!name.endsWith(".docx") && !name.endsWith(".pdf") && !name.endsWith(".txt") && !name.endsWith(".md")) {
-        setError("Định dạng không được hỗ trợ. Vui lòng chọn tệp .docx, .pdf, hoặc .txt");
+      if (
+        !name.endsWith(".docx") &&
+        !name.endsWith(".pptx") &&
+        !name.endsWith(".pdf") &&
+        !name.endsWith(".txt") &&
+        !name.endsWith(".md")
+      ) {
+        setError("Định dạng không được hỗ trợ. Vui lòng chọn tệp Word (.docx), PowerPoint (.pptx), PDF (.pdf), hoặc .txt");
         return;
       }
       if (f.size > 10 * 1024 * 1024) {
@@ -94,7 +100,7 @@ export default function AIQuizGenerator({ isOpen, onClose, onApply, existingCoun
     setResult(null);
 
     if (tab === "file" && !file) {
-      setError("Vui lòng tải lên tệp tài liệu (.docx, .pdf, .txt).");
+      setError("Vui lòng tải lên tệp tài liệu (.docx, .pptx, .pdf, .txt).");
       return;
     }
     if (tab === "text" && !text.trim()) {
@@ -332,7 +338,7 @@ export default function AIQuizGenerator({ isOpen, onClose, onApply, existingCoun
                   onClick={() => setTab("file")}
                   style={{ flex: 1, padding: "9px 14px", borderRadius: 10, fontSize: ".9rem" }}
                 >
-                  📁 Tải Tệp Lên (Word .docx / PDF / Text)
+                  📁 Tải Tệp Lên (Word / PowerPoint / PDF / Text)
                 </button>
                 <button
                   type="button"
@@ -366,7 +372,7 @@ export default function AIQuizGenerator({ isOpen, onClose, onApply, existingCoun
                   <input
                     ref={fileInputRef}
                     type="file"
-                    accept=".docx,.pdf,.txt,.md"
+                    accept=".docx,.pptx,.pdf,.txt,.md"
                     onChange={handleFileChange}
                     style={{ display: "none" }}
                   />
@@ -375,6 +381,8 @@ export default function AIQuizGenerator({ isOpen, onClose, onApply, existingCoun
                       <span style={{ fontSize: "2rem" }}>
                         {file.name.endsWith(".pdf")
                           ? "📕"
+                          : file.name.endsWith(".pptx")
+                          ? "📙"
                           : file.name.endsWith(".docx")
                           ? "📘"
                           : "📄"}
@@ -404,7 +412,7 @@ export default function AIQuizGenerator({ isOpen, onClose, onApply, existingCoun
                         Kéo thả tệp vào đây hoặc nhấp để chọn tệp
                       </div>
                       <div className="muted" style={{ fontSize: ".83rem" }}>
-                        Hỗ trợ định dạng Microsoft Word (<b>.docx</b>), Adobe PDF (<b>.pdf</b>), và tệp văn bản (<b>.txt</b>) tối đa 10MB
+                        Hỗ trợ Microsoft Word (<b>.docx</b>), PowerPoint (<b>.pptx</b>), Adobe PDF (<b>.pdf</b>), và tệp văn bản (<b>.txt</b>) tối đa 10MB
                       </div>
                     </div>
                   )}
