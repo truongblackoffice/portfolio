@@ -6,6 +6,7 @@ export const maxDuration = 60; // Dynamic route timeout for Next.js
 
 // Danh sách các model fallback dự phòng nếu không list được models từ API
 const DEFAULT_CANDIDATE_MODELS = [
+  { apiVersion: "v1beta", model: "gemini-3.8-flash" },
   { apiVersion: "v1beta", model: "gemini-2.0-flash" },
   { apiVersion: "v1beta", model: "gemini-1.5-flash" },
   { apiVersion: "v1", model: "gemini-1.5-flash" },
@@ -84,11 +85,13 @@ async function getCandidateModelsForApiKey(apiKey) {
             Array.isArray(m.supportedGenerationMethods) &&
             m.supportedGenerationMethods.includes("generateContent")
         )
-        .map((m) => m.name.replace(/^models\//, ""));
+        .map((m) => m.name.replace(/^models\//, ""))
+        .filter((m) => !m.includes("2.5"));
 
       if (models.length > 0) {
         const prioritized = [];
         const priorityOrder = [
+          (m) => m.startsWith("gemini-3.8-flash"),
           (m) => m.startsWith("gemini-2.0-flash") && !m.includes("lite") && !m.includes("thinking"),
           (m) => m === "gemini-1.5-flash",
           (m) => m.startsWith("gemini-1.5-flash-002"),

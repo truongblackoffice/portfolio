@@ -107,9 +107,18 @@ async function extractDocumentContentClient(file, rawText) {
 }
 
 /**
- * Lấy model Gemini tốt nhất từ Google API trực tiếp cho key này
+ * Lấy danh sách các model Gemini khả dụng theo độ ưu tiên cho key này
  */
-async function getBestGeminiModelClient(apiKey) {
+async function getCandidateModelsClient(apiKey) {
+  const DEFAULT_MODELS = [
+    "gemini-3.8-flash",
+    "gemini-2.0-flash",
+    "gemini-1.5-flash",
+    "gemini-1.5-flash-002",
+    "gemini-1.5-flash-001",
+    "gemini-1.5-pro",
+  ];
+
   try {
     const listRes = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`,
@@ -123,10 +132,13 @@ async function getBestGeminiModelClient(apiKey) {
             Array.isArray(m.supportedGenerationMethods) &&
             m.supportedGenerationMethods.includes("generateContent")
         )
-        .map((m) => m.name.replace(/^models\//, ""));
+        .map((m) => m.name.replace(/^models\//, ""))
+        // Loại bỏ các model đã bị Google hạn chế / ngưng hỗ trợ như gemini-2.5-flash
+        .filter((m) => !m.includes("2.5"));
 
       if (models.length > 0) {
         const priorityOrder = [
+          (m) => m.startsWith("gemini-3.8-flash"),
           (m) => m.startsWith("gemini-2.0-flash") && !m.includes("lite") && !m.includes("thinking"),
           (m) => m === "gemini-1.5-flash",
           (m) => m.startsWith("gemini-1.5-flash-002"),
@@ -137,18 +149,26 @@ async function getBestGeminiModelClient(apiKey) {
           (m) => m.includes("pro"),
         ];
 
+        const prioritized = [];
         for (const check of priorityOrder) {
-          const found = models.find(check);
-          if (found) return found;
+          const found = models.filter(check);
+          for (const f of found) {
+            if (!prioritized.includes(f)) prioritized.push(f);
+          }
+        }
+        for (const m of models) {
+          if (!prioritized.includes(m)) prioritized.push(m);
         }
 
-        return models[0];
+        // Đảm bảo gemini-3.8-flash và gemini-2.0-flash luôn được ưu tiên
+        if (!prioritized.includes("gemini-3.8-flash")) prioritized.unshift("gemini-3.8-flash");
+        return prioritized;
       }
     }
   } catch (err) {
-    console.warn("Client could not list models, fallback to gemini-2.0-flash", err);
+    console.warn("Client could not list models, fallback to defaults", err);
   }
-  return "gemini-2.0-flash";
+  return DEFAULT_MODELS;
 }
 
 export default function AIQuizGenerator({ isOpen, onClose, onApply, existingCount = 0 }) {
@@ -280,7 +300,7 @@ export default function AIQuizGenerator({ isOpen, onClose, onApply, existingCoun
         const docParts = await extractDocumentContentClient(tab === "file" ? file : null, text);
 
         setLoadingStep("Đang kết nối Google Gemini API...");
-        const modelName = await getBestGeminiModelClient(activeKey);
+        const candidateModels = await getCandidateModelsClient(activeKey);
 
         const difficultyDesc = {
           easy: "Dễ (Nhận biết định nghĩa, sự kiện, công thức cơ bản)",
@@ -297,6 +317,7 @@ export default function AIQuizGenerator({ isOpen, onClose, onApply, existingCoun
         let allQuestions = [];
         let titleSuggestion = "";
         let summaryDoc = "";
+        let finalModelUsed = candidateModels[0];
 
         for (let b = 0; b < totalBatches; b++) {
           const batchCount = Math.min(batchSize, targetTotal - allQuestions.length);
@@ -339,26 +360,48 @@ ${customPrompt ? `6. Yêu cầu riêng từ giáo viên: ${customPrompt}` : ""}`
 }`;
 
           const contents = [{ role: "user", parts: [...docParts, { text: promptText }] }];
-          const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${activeKey}`;
 
-          const res = await fetch(apiUrl, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              contents,
-              systemInstruction: { parts: [{ text: systemInstruction }] },
-              generationConfig: {
-                responseMimeType: "application/json",
-                temperature: 0.35,
-              },
-            }),
-          });
+          let res = null;
+          let lastErrRaw = "";
 
-          if (!res.ok) {
-            const errRaw = await res.text();
-            let msg = `Lỗi từ Gemini API (${res.status})`;
+          for (const modelName of candidateModels) {
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${activeKey}`;
             try {
-              const errObj = JSON.parse(errRaw);
+              const attemptRes = await fetch(apiUrl, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  contents,
+                  systemInstruction: { parts: [{ text: systemInstruction }] },
+                  generationConfig: {
+                    responseMimeType: "application/json",
+                    temperature: 0.35,
+                  },
+                }),
+              });
+
+              if (attemptRes.ok) {
+                res = attemptRes;
+                finalModelUsed = modelName;
+                break;
+              }
+
+              lastErrRaw = await attemptRes.text();
+              console.warn(`Model ${modelName} không khả dụng (${attemptRes.status}):`, lastErrRaw.slice(0, 100));
+
+              // Nếu key không hợp lệ, không thử tiếp
+              if (attemptRes.status === 400 && lastErrRaw.includes("API_KEY_INVALID")) {
+                break;
+              }
+            } catch (err) {
+              console.warn(`Fetch error for ${modelName}:`, err);
+            }
+          }
+
+          if (!res || !res.ok) {
+            let msg = "Không thể kết nối đến model Gemini khả dụng.";
+            try {
+              const errObj = JSON.parse(lastErrRaw);
               if (errObj?.error?.message) msg = errObj.error.message;
             } catch {}
             throw new Error(msg);
@@ -399,7 +442,7 @@ ${customPrompt ? `6. Yêu cầu riêng từ giáo viên: ${customPrompt}` : ""}`
         setProgressPercent(100);
         setResult({
           success: true,
-          modelUsed: `${modelName} (Direct Client)`,
+          modelUsed: `${finalModelUsed} (Direct Client)`,
           titleSuggestion,
           summary: summaryDoc,
           count: allQuestions.length,
