@@ -3,6 +3,7 @@ import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { login, register, loginWithGoogle, watchAuth, isAdminUser, authMessage, isDemo } from "@/lib/db";
+import { useSite } from "@/lib/SiteContext";
 
 export default function LoginPage() {
   return (
@@ -23,6 +24,10 @@ function LoginForm() {
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
+
+  const { site } = useSite();
+  const registrationDisabled = Boolean(site?.security?.disableRegistration);
+  const regCloseMsg = site?.security?.registrationCloseMessage || "Chức năng đăng ký tài khoản mới hiện đang tạm đóng. Vui lòng liên hệ Quản trị viên để được hỗ trợ.";
 
   // Tự động điều hướng sau khi đăng nhập / đăng ký thành công
   useEffect(() => {
@@ -65,6 +70,7 @@ function LoginForm() {
   function submit(e) {
     e.preventDefault();
     if (mode === "register") {
+      if (registrationDisabled) return setErr(regCloseMsg);
       if (f.password !== f.confirm) return setErr("Mật khẩu nhập lại không khớp.");
       return run(() => register(f.name, f.email, f.password));
     }
@@ -92,9 +98,15 @@ function LoginForm() {
             className={mode === "register" ? "active" : ""}
             onClick={(e) => { e.preventDefault(); setMode("register"); setErr(""); }}
           >
-            Đăng ký
+            Đăng ký {registrationDisabled && <span style={{ fontSize: ".72rem", color: "#ef4444", fontWeight: "normal" }}>(Tạm đóng)</span>}
           </a>
         </div>
+
+        {mode === "register" && registrationDisabled && (
+          <div className="msg err" style={{ marginBottom: 16 }}>
+            🔒 {regCloseMsg}
+          </div>
+        )}
 
         <h1 style={{ fontSize: "1.8rem", marginBottom: 20 }}>
           {mode === "login" ? "Chào mừng trở lại" : "Tạo tài khoản mới"}
@@ -149,8 +161,14 @@ function LoginForm() {
               <input id="a-pw2" type="password" required value={f.confirm} onChange={set("confirm")} placeholder="Nhập lại đúng mật khẩu..." />
             </div>
           )}
-          <button className="btn btn-primary" id="auth-submit" type="submit" disabled={busy} style={{ width: "100%", justifyContent: "center" }}>
-            {busy ? "Đang xử lý..." : mode === "login" ? "Đăng nhập" : "Đăng ký"}
+          <button
+            className="btn btn-primary"
+            id="auth-submit"
+            type="submit"
+            disabled={busy || (mode === "register" && registrationDisabled)}
+            style={{ width: "100%", justifyContent: "center" }}
+          >
+            {busy ? "Đang xử lý..." : mode === "login" ? "Đăng nhập" : (registrationDisabled ? "Đăng ký tạm đóng" : "Tạo tài khoản")}
           </button>
         </form>
 

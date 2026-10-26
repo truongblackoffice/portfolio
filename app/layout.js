@@ -89,11 +89,6 @@ export default function RootLayout({ children }) {
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `(function(){try{if(typeof window==='undefined')return;window.addEventListener('error',function(e){e.preventDefault&&e.preventDefault();e.stopImmediatePropagation&&e.stopImmediatePropagation();return true;},true);window.addEventListener('unhandledrejection',function(e){e.preventDefault&&e.preventDefault();e.stopImmediatePropagation&&e.stopImmediatePropagation();return true;},true);document.addEventListener('keydown',function(e){if(e.key==='F12'||e.keyCode===123){e.preventDefault();e.stopPropagation();return false;}var m=e.ctrlKey||e.metaKey;if(e.shiftKey&&m&&['I','i','J','j','C','c','K','k'].indexOf(e.key)>-1){e.preventDefault();e.stopPropagation();return false;}if(m&&['U','u','S','s'].indexOf(e.key)>-1){e.preventDefault();e.stopPropagation();return false;}},true);document.addEventListener('contextmenu',function(e){e.preventDefault();return false;},true);var n=function(){};['log','debug','info','warn','error','table','trace','dir'].forEach(function(k){try{window.console[k]=n;}catch(x){}});if(window.console&&window.console.clear){try{window.console.clear();}catch(x){}}}catch(e){}})();`,
-          }}
-        />
       </head>
       <body className={`${inter.variable} ${outfit.variable}`} suppressHydrationWarning>
         <SiteProvider>
