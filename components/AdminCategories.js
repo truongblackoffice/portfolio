@@ -4,7 +4,7 @@ import { listItems, saveItem, removeItem, uploadFile } from "@/lib/db";
 import useAsync from "@/lib/useAsync";
 import { toast } from "@/lib/toast";
 
-import { ALL_ICON_TOPICS, PRESET_COLORS, renderIcon, isImageIcon } from "@/lib/presets";
+import { ALL_ICON_TOPICS, IT_ICON_GROUPS, PRESET_COLORS, renderIcon, isImageIcon } from "@/lib/presets";
 
 export default function AdminCategories() {
   const { data: catData, reload } = useAsync(async () => {
@@ -155,7 +155,7 @@ export default function AdminCategories() {
     setBusy(false);
   };
 
-  const currentIcons = IT_ICON_GROUPS.find((g) => g.id === activeGroup)?.icons || [];
+  const currentIcons = ALL_ICON_TOPICS.find((g) => g.id === activeGroup)?.icons || [];
 
   return (
     <div className="glass reveal" style={{ padding: 28, borderRadius: "var(--radius)" }}>

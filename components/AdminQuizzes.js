@@ -3,7 +3,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { listItems, saveItem, removeItem, uploadFile, fmtDate } from "@/lib/db";
 import useAsync from "@/lib/useAsync";
-import { ALL_ICON_TOPICS, PRESET_COLORS, renderIcon, isImageIcon } from "@/lib/presets";
+import { ALL_ICON_TOPICS, IT_ICON_GROUPS, PRESET_COLORS, renderIcon, isImageIcon } from "@/lib/presets";
 import QuizEditor from "@/components/QuizEditor";
 import { toast } from "@/lib/toast";
 
@@ -117,7 +117,7 @@ export default function AdminQuizzes() {
     reload();
   }
 
-  const icons = IT_ICON_GROUPS.find((g) => g.id === group)?.icons || [];
+  const icons = ALL_ICON_TOPICS.find((g) => g.id === activeGroup)?.icons || [];
 
   return (
     <div className="glass reveal" style={{ padding: 28, borderRadius: "var(--radius)" }}>
