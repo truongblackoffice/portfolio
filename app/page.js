@@ -1,15 +1,15 @@
 "use client";
 import Link from "next/link";
 import { getProfile, listItems } from "@/lib/db";
-import { seedProfile } from "@/lib/seed";
+import { seedProfile, seedPosts, seedDocuments } from "@/lib/seed";
 import useAsync from "@/lib/useAsync";
 import { PostCard, DocCard } from "@/components/Cards";
 import { useSite } from "@/lib/SiteContext";
 
 const initialHomeData = {
   profile: seedProfile,
-  posts: [],
-  docs: [],
+  posts: (seedPosts || []).filter((p) => p.published).slice(0, 3),
+  docs: (seedDocuments || []).slice(0, 3),
 };
 
 export default function Home() {

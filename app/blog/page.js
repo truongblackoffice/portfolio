@@ -1,14 +1,18 @@
 "use client";
 import { useState } from "react";
 import { listItems } from "@/lib/db";
+import { seedPosts } from "@/lib/seed";
 import useAsync from "@/lib/useAsync";
 import { PostCard, Filters, applyFilters } from "@/components/Cards";
+
+const initialBlogPosts = (seedPosts || []).filter((p) => p.published);
 
 export default function Blog() {
   const { data } = useAsync(
     async () => (await listItems("posts", true)).filter((p) => p.published),
     [],
-    "blog_posts"
+    "blog_posts",
+    initialBlogPosts
   );
   const [q, setQ] = useState(""); const [cat, setCat] = useState(""); const [tag, setTag] = useState("");
   const list = data ? applyFilters(data, q, cat, tag) : [];

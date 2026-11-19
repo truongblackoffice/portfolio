@@ -1,11 +1,12 @@
 "use client";
 import { useState } from "react";
 import { listItems } from "@/lib/db";
+import { seedDocuments } from "@/lib/seed";
 import useAsync from "@/lib/useAsync";
 import { DocCard, Filters, applyFilters } from "@/components/Cards";
 
 export default function Documents() {
-  const { data } = useAsync(() => listItems("documents"), [], "documents_list");
+  const { data } = useAsync(() => listItems("documents"), [], "documents_list", seedDocuments || []);
   const [q, setQ] = useState(""); const [cat, setCat] = useState(""); const [tag, setTag] = useState("");
   const list = data ? applyFilters(data, q, cat, tag) : [];
 

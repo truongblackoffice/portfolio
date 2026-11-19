@@ -75,6 +75,10 @@ export default function RootLayout({ children }) {
   return (
     <html lang="vi" suppressHydrationWarning>
       <head>
+        <link rel="preconnect" href="https://firestore.googleapis.com" crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href="https://firestore.googleapis.com" />
+        <link rel="preconnect" href="https://identitytoolkit.googleapis.com" crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href="https://identitytoolkit.googleapis.com" />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
