@@ -1013,6 +1013,10 @@ textarea { min-height: 120px; resize: vertical; }
     grid-template-columns: 1fr;
   }
 }
+.contact-channel-wrapper {
+  margin-bottom: 12px;
+}
+
 .contact-method-card {
   display: flex;
   align-items: center;
@@ -1022,12 +1026,17 @@ textarea { min-height: 120px; resize: vertical; }
   transition: all 0.25s ease;
   text-decoration: none;
   color: inherit;
-  margin-bottom: 12px;
+  margin-bottom: 0;
 }
 .contact-method-card:hover {
   transform: translateX(6px);
   border-color: var(--primary);
   background: hsla(262 90% 68% / 0.1);
+}
+.contact-method-open {
+  border-radius: 16px 16px 0 0 !important;
+  border-bottom-color: transparent !important;
+  transform: none !important;
 }
 .contact-method-clickable {
   cursor: pointer;
@@ -1037,23 +1046,36 @@ textarea { min-height: 120px; resize: vertical; }
   transform: translateX(4px) scale(0.99);
 }
 
-/* Contextual action popup */
-.contact-action-popup {
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: calc(100% + 6px);
-  z-index: 100;
-  border-radius: 14px;
-  padding: 8px 6px;
-  background: var(--surface);
+/* Accordion inline action panel — pushes siblings down */
+.contact-action-panel {
+  border-radius: 0 0 16px 16px;
+  padding: 12px 14px 14px;
   border: 1px solid var(--glass-border);
-  box-shadow: 0 16px 40px rgba(0,0,0,.45);
-  animation: popup-in .18s ease;
+  border-top: none;
+  margin-top: -1px;
+  animation: accordion-in .22s ease;
+  overflow: hidden;
 }
-@keyframes popup-in {
-  from { opacity: 0; transform: translateY(-6px) scale(.97); }
-  to   { opacity: 1; transform: translateY(0) scale(1); }
+@keyframes accordion-in {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.contact-action-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.contact-action-icon {
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.contact-action-label {
+  flex: 1;
+  min-width: 0;
 }
 .contact-action-item {
   display: flex;

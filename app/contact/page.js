@@ -1,5 +1,5 @@
 "use client";
-import { useState, useRef, useEffect } from "react";
+import { useState } from "react";
 import { saveItem, getProfile } from "@/lib/db";
 import { seedProfile, defaultContactConfig } from "@/lib/seed";
 import { renderIcon } from "@/lib/presets";
@@ -21,23 +21,9 @@ export default function Contact() {
   });
   const [loading, setLoading] = useState(false);
   const [st, setSt] = useState(null);
-  const [activeMenu, setActiveMenu] = useState(null); // id of channel whose popup is open
-  const menuRef = useRef(null);
+  const [activeMenu, setActiveMenu] = useState(null); // id of channel whose panel is open
 
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
-
-  // Close popup when clicking outside
-  useEffect(() => {
-    function handleClickOutside(e) {
-      if (menuRef.current && !menuRef.current.contains(e.target)) {
-        setActiveMenu(null);
-      }
-    }
-    if (activeMenu) {
-      document.addEventListener("mousedown", handleClickOutside);
-    }
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [activeMenu]);
 
   const handleCopyText = (text) => {
     if (typeof navigator !== "undefined" && navigator.clipboard) {
@@ -174,124 +160,120 @@ export default function Contact() {
           </h2>
 
           {/* Dynamic Channels */}
-          <div ref={menuRef} style={{ position: "relative" }}>
           {channels.map((ch) => {
             const actions = getChannelActions(ch);
             const hasActions = actions.length > 0;
             const isOpen = activeMenu === ch.id;
 
             return (
-              <div
-                key={ch.id}
-                className={`card glass contact-method-card reveal ${hasActions ? "contact-method-clickable" : ""}`}
-                style={{ cursor: hasActions ? "pointer" : "default", position: "relative" }}
-                onClick={() => {
-                  if (hasActions) setActiveMenu(isOpen ? null : ch.id);
-                }}
-                role={hasActions ? "button" : undefined}
-                tabIndex={hasActions ? 0 : undefined}
-                onKeyDown={(e) => {
-                  if (hasActions && (e.key === "Enter" || e.key === " ")) {
-                    e.preventDefault();
-                    setActiveMenu(isOpen ? null : ch.id);
-                  }
-                  if (e.key === "Escape") setActiveMenu(null);
-                }}
-              >
+              <div key={ch.id} className="contact-channel-wrapper reveal">
+                {/* Main card row — click to toggle */}
                 <div
-                  className="contact-method-icon"
-                  style={{
-                    background: isOpen ? "hsla(262 90% 68% / .30)" : "hsla(262 90% 68% / .18)",
-                    borderColor: isOpen ? "var(--primary)" : "hsla(262 90% 68% / .4)",
-                    transition: "all .2s",
+                  className={`card glass contact-method-card ${hasActions ? "contact-method-clickable" : ""} ${isOpen ? "contact-method-open" : ""}`}
+                  style={{ marginBottom: 0 }}
+                  onClick={() => {
+                    if (hasActions) setActiveMenu(isOpen ? null : ch.id);
+                  }}
+                  role={hasActions ? "button" : undefined}
+                  tabIndex={hasActions ? 0 : undefined}
+                  onKeyDown={(e) => {
+                    if (hasActions && (e.key === "Enter" || e.key === " ")) {
+                      e.preventDefault();
+                      setActiveMenu(isOpen ? null : ch.id);
+                    }
+                    if (e.key === "Escape") setActiveMenu(null);
                   }}
                 >
-                  {renderIcon(ch.icon, "💬", { width: 28, height: 28 })}
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: ".8rem", color: "var(--muted)", fontWeight: 500 }}>
-                    {ch.title}
-                  </div>
-                  <b
+                  <div
+                    className="contact-method-icon"
                     style={{
-                      display: "block",
-                      fontSize: ".95rem",
-                      wordBreak: "break-all",
-                      margin: "2px 0 4px",
+                      background: isOpen ? "hsla(262 90% 68% / .30)" : "hsla(262 90% 68% / .18)",
+                      borderColor: isOpen ? "var(--primary)" : "hsla(262 90% 68% / .4)",
+                      transition: "all .2s",
                     }}
                   >
-                    {ch.value || ch.link || "Liên hệ trực tiếp"}
-                  </b>
-                  {ch.subtitle && (
-                    <div className="muted" style={{ fontSize: ".78rem" }}>
-                      {ch.subtitle}
+                    {renderIcon(ch.icon, "💬", { width: 28, height: 28 })}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: ".8rem", color: "var(--muted)", fontWeight: 500 }}>
+                      {ch.title}
+                    </div>
+                    <b style={{ display: "block", fontSize: ".95rem", wordBreak: "break-all", margin: "2px 0 2px" }}>
+                      {ch.value || ch.link || "Liên hệ trực tiếp"}
+                    </b>
+                    {ch.subtitle && (
+                      <div className="muted" style={{ fontSize: ".78rem" }}>{ch.subtitle}</div>
+                    )}
+                  </div>
+
+                  {/* Chevron hint */}
+                  {hasActions && (
+                    <div
+                      style={{
+                        flexShrink: 0,
+                        width: 26,
+                        height: 26,
+                        display: "grid",
+                        placeItems: "center",
+                        borderRadius: 8,
+                        background: isOpen ? "hsla(262 90% 68% / .25)" : "hsla(0 0% 100% / .06)",
+                        color: isOpen ? "var(--primary)" : "var(--muted)",
+                        fontSize: "1rem",
+                        transition: "all .2s",
+                        transform: isOpen ? "rotate(180deg)" : "none",
+                      }}
+                    >
+                      ⌃
                     </div>
                   )}
                 </div>
 
-                {/* Hint arrow */}
-                {hasActions && (
-                  <div
-                    style={{
-                      flexShrink: 0,
-                      color: "var(--muted)",
-                      fontSize: ".8rem",
-                      transition: "transform .2s",
-                      transform: isOpen ? "rotate(180deg)" : "none",
-                    }}
-                  >
-                    ▾
-                  </div>
-                )}
-
-                {/* Contextual Action Popup */}
+                {/* Inline expanded action panel — pushes siblings down naturally */}
                 {isOpen && (
-                  <div
-                    className="contact-action-popup glass"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <div style={{ fontSize: ".74rem", fontWeight: 700, color: "var(--muted)", letterSpacing: ".05em", padding: "4px 12px 8px", textTransform: "uppercase" }}>
+                  <div className="contact-action-panel glass" onClick={(e) => e.stopPropagation()}>
+                    <div style={{ fontSize: ".7rem", fontWeight: 700, color: "var(--muted)", letterSpacing: ".08em", marginBottom: 8, textTransform: "uppercase" }}>
                       Chọn hành động
                     </div>
-                    {actions.map((action, i) => {
-                      if (action.copy) {
+                    <div className="contact-action-grid">
+                      {actions.map((action, i) => {
+                        if (action.copy) {
+                          return (
+                            <button
+                              key={i}
+                              type="button"
+                              className="contact-action-item"
+                              onClick={() => handleCopyText(action.copy)}
+                            >
+                              <span className="contact-action-icon">
+                                {renderIcon(action.icon, "📋", { width: 20, height: 20 })}
+                              </span>
+                              <span className="contact-action-label">{action.label}</span>
+                            </button>
+                          );
+                        }
                         return (
-                          <button
+                          <a
                             key={i}
-                            type="button"
+                            href={action.href}
+                            target={action.target || "_blank"}
+                            rel="noreferrer"
                             className="contact-action-item"
-                            onClick={() => handleCopyText(action.copy)}
+                            onClick={() => setActiveMenu(null)}
                           >
-                            <span style={{ width: 20, height: 20, display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                              {renderIcon(action.icon, "📋", { width: 18, height: 18 })}
+                            <span className="contact-action-icon">
+                              {renderIcon(action.icon, "🔗", { width: 20, height: 20 })}
                             </span>
-                            <span>{action.label}</span>
-                          </button>
+                            <span className="contact-action-label">{action.label}</span>
+                            <span style={{ marginLeft: "auto", opacity: .4, fontSize: ".7rem", flexShrink: 0 }}>↗</span>
+                          </a>
                         );
-                      }
-                      return (
-                        <a
-                          key={i}
-                          href={action.href}
-                          target={action.target || "_blank"}
-                          rel="noreferrer"
-                          className="contact-action-item"
-                          onClick={() => setActiveMenu(null)}
-                        >
-                          <span style={{ width: 20, height: 20, display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                            {renderIcon(action.icon, "🔗", { width: 18, height: 18 })}
-                          </span>
-                          <span>{action.label}</span>
-                          <span style={{ marginLeft: "auto", opacity: .4, fontSize: ".7rem" }}>↗</span>
-                        </a>
-                      );
-                    })}
+                      })}
+                    </div>
                   </div>
                 )}
               </div>
             );
           })}
-          </div>
 
           {channels.length === 0 && (
             <div className="empty" style={{ padding: 20 }}>
