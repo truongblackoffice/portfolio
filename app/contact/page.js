@@ -33,82 +33,129 @@ export default function Contact() {
     setActiveMenu(null);
   };
 
-  /** Build contextual action list for each channel type */
+  /** Build contextual action list for each channel type based on admin config */
   function getChannelActions(ch) {
     const actions = [];
     const rawEmail = ch.link?.replace("mailto:", "").trim() || ch.value?.trim();
     const rawPhone = ch.link?.replace("tel:", "").trim() || ch.value?.trim();
+    const opts = ch.actionOptions || {};
 
     if (ch.type === "email" && rawEmail) {
-      actions.push({
-        icon: "https://api.iconify.design/simple-icons/gmail.svg?color=%23ea4335",
-        label: "Gửi qua Gmail",
-        href: `https://mail.google.com/mail/?view=cm&to=${encodeURIComponent(rawEmail)}`,
-        target: "_blank",
-      });
-      actions.push({
-        icon: "https://api.iconify.design/simple-icons/microsoftoutlook.svg?color=%230078d4",
-        label: "Gửi qua Outlook",
-        href: `https://outlook.live.com/mail/0/deeplink/compose?to=${encodeURIComponent(rawEmail)}`,
-        target: "_blank",
-      });
-      actions.push({
-        icon: "https://api.iconify.design/simple-icons/yahoo.svg?color=%236001d2",
-        label: "Gửi qua Yahoo Mail",
-        href: `https://compose.mail.yahoo.com/?to=${encodeURIComponent(rawEmail)}`,
-        target: "_blank",
-      });
-      actions.push({
-        icon: "https://api.iconify.design/lucide/mail.svg?color=%238b5cf6",
-        label: "Mở ứng dụng mail mặc định",
-        href: ch.link || `mailto:${rawEmail}`,
-        target: "_self",
-      });
-      actions.push({
-        icon: "https://api.iconify.design/lucide/copy.svg?color=%2306b6d4",
-        label: `Sao chép địa chỉ email`,
-        copy: rawEmail,
-      });
-    } else if (ch.type === "phone") {
-      if (rawPhone) {
+      if (opts.gmail !== false) {
         actions.push({
-          icon: "https://api.iconify.design/simple-icons/zalo.svg?color=%230068ff",
-          label: "Mở Zalo nhắn tin",
-          href: `https://zalo.me/${rawPhone.replace(/\D/g, "")}`,
+          icon: "https://api.iconify.design/simple-icons/gmail.svg?color=%23ea4335",
+          label: "Gửi qua Gmail",
+          href: `https://mail.google.com/mail/?view=cm&to=${encodeURIComponent(rawEmail)}`,
           target: "_blank",
         });
+      }
+      if (opts.outlook !== false) {
         actions.push({
-          icon: "https://api.iconify.design/lucide/phone-call.svg?color=%2310b981",
-          label: "Gọi điện thoại",
-          href: `tel:${rawPhone.replace(/\s/g, "")}`,
-          target: "_self",
-        });
-        actions.push({
-          icon: "https://api.iconify.design/lucide/copy.svg?color=%2306b6d4",
-          label: "Sao chép số điện thoại",
-          copy: rawPhone,
+          icon: "https://api.iconify.design/simple-icons/microsoftoutlook.svg?color=%230078d4",
+          label: "Gửi qua Outlook",
+          href: `https://outlook.live.com/mail/0/deeplink/compose?to=${encodeURIComponent(rawEmail)}`,
+          target: "_blank",
         });
       }
+      if (opts.yahoo !== false) {
+        actions.push({
+          icon: "https://api.iconify.design/simple-icons/yahoo.svg?color=%236001d2",
+          label: "Gửi qua Yahoo Mail",
+          href: `https://compose.mail.yahoo.com/?to=${encodeURIComponent(rawEmail)}`,
+          target: "_blank",
+        });
+      }
+      if (opts.mailApp !== false) {
+        actions.push({
+          icon: "https://api.iconify.design/lucide/mail.svg?color=%238b5cf6",
+          label: "Mở ứng dụng mail mặc định",
+          href: ch.link || `mailto:${rawEmail}`,
+          target: "_self",
+        });
+      }
+      if (opts.copyEmail !== false) {
+        actions.push({
+          icon: "https://api.iconify.design/lucide/copy.svg?color=%2306b6d4",
+          label: "Sao chép địa chỉ email",
+          copy: rawEmail,
+        });
+      }
+    } else if (ch.type === "phone") {
+      if (rawPhone) {
+        if (opts.zalo !== false) {
+          actions.push({
+            icon: "https://api.iconify.design/simple-icons/zalo.svg?color=%230068ff",
+            label: "Mở Zalo nhắn tin",
+            href: `https://zalo.me/${rawPhone.replace(/\D/g, "")}`,
+            target: "_blank",
+          });
+        }
+        if (opts.call !== false) {
+          actions.push({
+            icon: "https://api.iconify.design/lucide/phone-call.svg?color=%2310b981",
+            label: "Gọi điện thoại",
+            href: `tel:${rawPhone.replace(/\s/g, "")}`,
+            target: "_self",
+          });
+        }
+        if (opts.copyPhone !== false) {
+          actions.push({
+            icon: "https://api.iconify.design/lucide/copy.svg?color=%2306b6d4",
+            label: "Sao chép số điện thoại",
+            copy: rawPhone,
+          });
+        }
+      }
     } else if (ch.link) {
-      actions.push({
-        icon: "https://api.iconify.design/lucide/external-link.svg?color=%238b5cf6",
-        label: "Mở liên kết",
-        href: ch.link,
-        target: "_blank",
-      });
-      if (ch.value) {
+      if (opts.openLink !== false) {
+        actions.push({
+          icon: "https://api.iconify.design/lucide/external-link.svg?color=%238b5cf6",
+          label: "Mở liên kết",
+          href: ch.link,
+          target: "_blank",
+        });
+      }
+
+      // Kiểm tra có copy text hiển thị không:
+      // Không copy nếu opts.copyValue === false hoặc nếu là các cụm từ tĩnh vô nghĩa (như "Nhắn tin qua Zalo", "Trang cá nhân")
+      const staticLabels = ["nhắn tin qua zalo", "trang cá nhân", "liên hệ trực tiếp", "kết nối ngay"];
+      const isStaticLabel = staticLabels.includes(String(ch.value || "").toLowerCase().trim());
+      const shouldCopyValue = opts.copyValue !== undefined
+        ? opts.copyValue === true
+        : (ch.allowCopy === true && !isStaticLabel);
+
+      if (shouldCopyValue && ch.value) {
         actions.push({
           icon: "https://api.iconify.design/lucide/copy.svg?color=%2306b6d4",
           label: `Sao chép "${ch.value}"`,
           copy: ch.value,
         });
       }
-      actions.push({
-        icon: "https://api.iconify.design/lucide/link.svg?color=%2364748b",
-        label: "Sao chép URL",
-        copy: ch.link,
+
+      if (opts.copyLink !== false) {
+        actions.push({
+          icon: "https://api.iconify.design/lucide/link.svg?color=%2364748b",
+          label: "Sao chép URL",
+          copy: ch.link,
+        });
+      }
+    }
+
+    // Custom actions nếu quản trị viên tạo thêm
+    if (Array.isArray(ch.customActions)) {
+      ch.customActions.forEach((ca) => {
+        if (ca && ca.enabled !== false && ca.label) {
+          actions.push({
+            icon: ca.icon || "https://api.iconify.design/lucide/link.svg?color=%238b5cf6",
+            label: ca.label,
+            href: ca.href || undefined,
+            copy: ca.copy || undefined,
+            target: ca.href?.startsWith("mailto:") || ca.href?.startsWith("tel:") ? "_self" : "_blank",
+          });
+        }
       });
     }
+
     return actions;
   }
 
@@ -164,22 +211,33 @@ export default function Contact() {
             const actions = getChannelActions(ch);
             const hasActions = actions.length > 0;
             const isOpen = activeMenu === ch.id;
+            const isClickable = hasActions || Boolean(ch.link);
+
+            const handleCardClick = () => {
+              if (hasActions) {
+                setActiveMenu(isOpen ? null : ch.id);
+              } else if (ch.link) {
+                if (ch.link.startsWith("mailto:") || ch.link.startsWith("tel:")) {
+                  window.location.href = ch.link;
+                } else {
+                  window.open(ch.link, "_blank", "noopener,noreferrer");
+                }
+              }
+            };
 
             return (
               <div key={ch.id} className="contact-channel-wrapper reveal">
-                {/* Main card row — click to toggle */}
+                {/* Main card row — click to toggle accordion or open link directly */}
                 <div
-                  className={`card glass contact-method-card ${hasActions ? "contact-method-clickable" : ""} ${isOpen ? "contact-method-open" : ""}`}
+                  className={`card glass contact-method-card ${isClickable ? "contact-method-clickable" : ""} ${isOpen ? "contact-method-open" : ""}`}
                   style={{ marginBottom: 0 }}
-                  onClick={() => {
-                    if (hasActions) setActiveMenu(isOpen ? null : ch.id);
-                  }}
-                  role={hasActions ? "button" : undefined}
-                  tabIndex={hasActions ? 0 : undefined}
+                  onClick={handleCardClick}
+                  role={isClickable ? "button" : undefined}
+                  tabIndex={isClickable ? 0 : undefined}
                   onKeyDown={(e) => {
-                    if (hasActions && (e.key === "Enter" || e.key === " ")) {
+                    if (isClickable && (e.key === "Enter" || e.key === " ")) {
                       e.preventDefault();
-                      setActiveMenu(isOpen ? null : ch.id);
+                      handleCardClick();
                     }
                     if (e.key === "Escape") setActiveMenu(null);
                   }}

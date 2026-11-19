@@ -5,6 +5,24 @@ import { defaultContactConfig } from "@/lib/seed";
 import { ALL_ICON_TOPICS, renderIcon, isImageIcon } from "@/lib/presets";
 import { toast } from "@/lib/toast";
 
+const getDefaultActionOptions = (type, value = "") => {
+  const staticLabels = ["nhắn tin qua zalo", "trang cá nhân", "liên hệ trực tiếp", "kết nối ngay"];
+  const isStatic = staticLabels.includes(String(value || "").toLowerCase().trim());
+  return {
+    openLink: true,
+    copyValue: !isStatic && Boolean(value),
+    copyLink: true,
+    gmail: true,
+    outlook: true,
+    yahoo: true,
+    mailApp: true,
+    copyEmail: true,
+    zalo: true,
+    call: true,
+    copyPhone: true,
+  };
+};
+
 const CHANNEL_PRESETS = [
   {
     title: "Email Quản trị",
@@ -14,6 +32,13 @@ const CHANNEL_PRESETS = [
     type: "email",
     subtitle: "Gửi thư điện tử trực tiếp",
     allowCopy: true,
+    actionOptions: {
+      gmail: true,
+      outlook: true,
+      yahoo: true,
+      mailApp: true,
+      copyEmail: true,
+    },
   },
   {
     title: "Zalo & Chat nhanh",
@@ -23,6 +48,11 @@ const CHANNEL_PRESETS = [
     type: "phone",
     subtitle: "Nhắn tin Zalo nhanh",
     allowCopy: true,
+    actionOptions: {
+      zalo: true,
+      call: true,
+      copyPhone: true,
+    },
   },
   {
     title: "Kênh Telegram",
@@ -31,7 +61,12 @@ const CHANNEL_PRESETS = [
     link: "https://t.me/username",
     type: "link",
     subtitle: "Trao đổi qua Telegram",
-    allowCopy: false,
+    allowCopy: true,
+    actionOptions: {
+      openLink: true,
+      copyValue: true,
+      copyLink: true,
+    },
   },
   {
     title: "Số điện thoại / Hotline",
@@ -41,6 +76,11 @@ const CHANNEL_PRESETS = [
     type: "phone",
     subtitle: "Gọi điện thoại trực tiếp",
     allowCopy: true,
+    actionOptions: {
+      zalo: true,
+      call: true,
+      copyPhone: true,
+    },
   },
   {
     title: "GitHub Profile",
@@ -49,7 +89,12 @@ const CHANNEL_PRESETS = [
     link: "https://github.com/username",
     type: "link",
     subtitle: "Khám phá kho mã nguồn mở",
-    allowCopy: false,
+    allowCopy: true,
+    actionOptions: {
+      openLink: true,
+      copyValue: true,
+      copyLink: true,
+    },
   },
   {
     title: "Facebook / Messenger",
@@ -59,6 +104,11 @@ const CHANNEL_PRESETS = [
     type: "link",
     subtitle: "Nhắn tin Facebook trực tiếp",
     allowCopy: false,
+    actionOptions: {
+      openLink: true,
+      copyValue: false,
+      copyLink: true,
+    },
   },
   {
     title: "LinkedIn Profile",
@@ -68,6 +118,11 @@ const CHANNEL_PRESETS = [
     type: "link",
     subtitle: "Kết nối mạng lưới công việc",
     allowCopy: false,
+    actionOptions: {
+      openLink: true,
+      copyValue: false,
+      copyLink: true,
+    },
   },
   {
     title: "Discord Server",
@@ -77,6 +132,11 @@ const CHANNEL_PRESETS = [
     type: "link",
     subtitle: "Tham gia máy chủ Discord",
     allowCopy: true,
+    actionOptions: {
+      openLink: true,
+      copyValue: true,
+      copyLink: true,
+    },
   },
 ];
 
@@ -210,6 +270,11 @@ export default function AdminContact() {
     if (preset) {
       setChannelForm({
         ...preset,
+        actionOptions: {
+          ...getDefaultActionOptions(preset.type, preset.value),
+          ...(preset.actionOptions || {}),
+        },
+        customActions: preset.customActions || [],
         enabled: true,
       });
     } else {
@@ -222,6 +287,8 @@ export default function AdminContact() {
         subtitle: "",
         allowCopy: false,
         enabled: true,
+        actionOptions: getDefaultActionOptions("link", ""),
+        customActions: [],
       });
     }
     setShowChannelModal(true);
@@ -233,7 +300,14 @@ export default function AdminContact() {
     setIconSearch("");
     setCdnSearchResults([]);
     setPickerTab("topics");
-    setChannelForm({ ...ch });
+    setChannelForm({
+      ...ch,
+      actionOptions: {
+        ...getDefaultActionOptions(ch.type, ch.value),
+        ...(ch.actionOptions || {}),
+      },
+      customActions: ch.customActions || [],
+    });
     setShowChannelModal(true);
   };
 
@@ -1060,17 +1134,239 @@ export default function AdminContact() {
                 />
               </div>
 
-              <div style={{ display: "flex", gap: 20, margin: "16px 0 24px", flexWrap: "wrap" }}>
-                <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: ".88rem" }}>
-                  <input
-                    type="checkbox"
-                    checked={channelForm.allowCopy}
-                    onChange={(e) => setChannelForm({ ...channelForm, allowCopy: e.target.checked })}
-                    style={{ width: "auto" }}
-                  />
-                  Hiện nút sao chép nhanh (Copy to clipboard)
-                </label>
+              {/* CẤU HÌNH SUBMENU HÀNH ĐỘNG (KHI CLICK VÀO Ô TRÊN WEB) */}
+              <div
+                style={{
+                  margin: "18px 0",
+                  padding: 16,
+                  borderRadius: 14,
+                  background: "hsla(0 0% 100% / .03)",
+                  border: "1px solid var(--glass-border)",
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8, flexWrap: "wrap", gap: 6 }}>
+                  <b style={{ fontSize: ".88rem", display: "flex", alignItems: "center", gap: 6, color: "var(--accent)" }}>
+                    <span>⚡</span> Tùy chọn Submenu hành động (Khi click vào thẻ)
+                  </b>
+                  <span style={{ fontSize: ".72rem", padding: "2px 8px", borderRadius: 999, background: "hsla(262 90% 68% / .15)", color: "var(--primary)" }}>
+                    {channelForm.type === "email" && "Kênh Email"}
+                    {channelForm.type === "phone" && "Kênh SĐT / Zalo"}
+                    {channelForm.type === "link" && "Kênh Liên kết / Mạng xã hội"}
+                    {channelForm.type === "text" && "Văn bản thuần"}
+                  </span>
+                </div>
+                <p className="muted" style={{ fontSize: ".76rem", marginBottom: 12 }}>
+                  Bật / tắt từng tùy chọn hiển thị trong danh sách khi người dùng bấm vào thẻ này trên trang liên hệ:
+                </p>
 
+                {/* Type: EMAIL */}
+                {channelForm.type === "email" && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    <label style={{ display: "flex", alignItems: "center", gap: 10, fontSize: ".84rem", cursor: "pointer" }}>
+                      <input
+                        type="checkbox"
+                        checked={channelForm.actionOptions?.gmail !== false}
+                        onChange={(e) =>
+                          setChannelForm({
+                            ...channelForm,
+                            actionOptions: { ...(channelForm.actionOptions || {}), gmail: e.target.checked },
+                          })
+                        }
+                        style={{ width: "auto" }}
+                      />
+                      <span>✉️ Gửi qua <b>Gmail</b> (mở trang compose Gmail web)</span>
+                    </label>
+
+                    <label style={{ display: "flex", alignItems: "center", gap: 10, fontSize: ".84rem", cursor: "pointer" }}>
+                      <input
+                        type="checkbox"
+                        checked={channelForm.actionOptions?.outlook !== false}
+                        onChange={(e) =>
+                          setChannelForm({
+                            ...channelForm,
+                            actionOptions: { ...(channelForm.actionOptions || {}), outlook: e.target.checked },
+                          })
+                        }
+                        style={{ width: "auto" }}
+                      />
+                      <span>📬 Gửi qua <b>Outlook Live</b> (mở trang compose Outlook web)</span>
+                    </label>
+
+                    <label style={{ display: "flex", alignItems: "center", gap: 10, fontSize: ".84rem", cursor: "pointer" }}>
+                      <input
+                        type="checkbox"
+                        checked={channelForm.actionOptions?.yahoo !== false}
+                        onChange={(e) =>
+                          setChannelForm({
+                            ...channelForm,
+                            actionOptions: { ...(channelForm.actionOptions || {}), yahoo: e.target.checked },
+                          })
+                        }
+                        style={{ width: "auto" }}
+                      />
+                      <span>🟣 Gửi qua <b>Yahoo Mail</b> (mở trang compose Yahoo)</span>
+                    </label>
+
+                    <label style={{ display: "flex", alignItems: "center", gap: 10, fontSize: ".84rem", cursor: "pointer" }}>
+                      <input
+                        type="checkbox"
+                        checked={channelForm.actionOptions?.mailApp !== false}
+                        onChange={(e) =>
+                          setChannelForm({
+                            ...channelForm,
+                            actionOptions: { ...(channelForm.actionOptions || {}), mailApp: e.target.checked },
+                          })
+                        }
+                        style={{ width: "auto" }}
+                      />
+                      <span>💻 Mở <b>ứng dụng Mail mặc định</b> trên máy (mailto:)</span>
+                    </label>
+
+                    <label style={{ display: "flex", alignItems: "center", gap: 10, fontSize: ".84rem", cursor: "pointer" }}>
+                      <input
+                        type="checkbox"
+                        checked={channelForm.actionOptions?.copyEmail !== false}
+                        onChange={(e) =>
+                          setChannelForm({
+                            ...channelForm,
+                            actionOptions: { ...(channelForm.actionOptions || {}), copyEmail: e.target.checked },
+                          })
+                        }
+                        style={{ width: "auto" }}
+                      />
+                      <span>📋 <b>Sao chép địa chỉ email</b> vào bộ nhớ tạm</span>
+                    </label>
+                  </div>
+                )}
+
+                {/* Type: PHONE */}
+                {channelForm.type === "phone" && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    <label style={{ display: "flex", alignItems: "center", gap: 10, fontSize: ".84rem", cursor: "pointer" }}>
+                      <input
+                        type="checkbox"
+                        checked={channelForm.actionOptions?.zalo !== false}
+                        onChange={(e) =>
+                          setChannelForm({
+                            ...channelForm,
+                            actionOptions: { ...(channelForm.actionOptions || {}), zalo: e.target.checked },
+                          })
+                        }
+                        style={{ width: "auto" }}
+                      />
+                      <span>💬 Mở <b>Zalo</b> nhắn tin trực tiếp (zalo.me/...)</span>
+                    </label>
+
+                    <label style={{ display: "flex", alignItems: "center", gap: 10, fontSize: ".84rem", cursor: "pointer" }}>
+                      <input
+                        type="checkbox"
+                        checked={channelForm.actionOptions?.call !== false}
+                        onChange={(e) =>
+                          setChannelForm({
+                            ...channelForm,
+                            actionOptions: { ...(channelForm.actionOptions || {}), call: e.target.checked },
+                          })
+                        }
+                        style={{ width: "auto" }}
+                      />
+                      <span>📞 <b>Gọi điện thoại</b> trực tiếp (tel:...)</span>
+                    </label>
+
+                    <label style={{ display: "flex", alignItems: "center", gap: 10, fontSize: ".84rem", cursor: "pointer" }}>
+                      <input
+                        type="checkbox"
+                        checked={channelForm.actionOptions?.copyPhone !== false}
+                        onChange={(e) =>
+                          setChannelForm({
+                            ...channelForm,
+                            actionOptions: { ...(channelForm.actionOptions || {}), copyPhone: e.target.checked },
+                          })
+                        }
+                        style={{ width: "auto" }}
+                      />
+                      <span>📋 <b>Sao chép số điện thoại</b></span>
+                    </label>
+                  </div>
+                )}
+
+                {/* Type: LINK */}
+                {channelForm.type === "link" && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                    <label style={{ display: "flex", alignItems: "center", gap: 10, fontSize: ".84rem", cursor: "pointer" }}>
+                      <input
+                        type="checkbox"
+                        checked={channelForm.actionOptions?.openLink !== false}
+                        onChange={(e) =>
+                          setChannelForm({
+                            ...channelForm,
+                            actionOptions: { ...(channelForm.actionOptions || {}), openLink: e.target.checked },
+                          })
+                        }
+                        style={{ width: "auto" }}
+                      />
+                      <span>🔗 <b>Mở liên kết</b> trong tab mới</span>
+                    </label>
+
+                    <div style={{ padding: "10px 14px", borderRadius: 10, background: "hsla(0 0% 100% / .02)", border: "1px solid var(--glass-border)" }}>
+                      <label style={{ display: "flex", alignItems: "center", gap: 10, fontSize: ".84rem", cursor: "pointer" }}>
+                        <input
+                          type="checkbox"
+                          checked={Boolean(channelForm.actionOptions?.copyValue)}
+                          onChange={(e) =>
+                            setChannelForm({
+                              ...channelForm,
+                              actionOptions: { ...(channelForm.actionOptions || {}), copyValue: e.target.checked },
+                            })
+                          }
+                          style={{ width: "auto" }}
+                        />
+                        <span>
+                          📋 Sao chép chữ hiển thị: <b style={{ color: "var(--accent)" }}>&quot;{channelForm.value || '(Trống)'}&quot;</b>
+                        </span>
+                      </label>
+                      <p className="muted" style={{ fontSize: ".74rem", margin: "4px 0 0 24px", color: "hsl(45 90% 60%)", lineHeight: 1.45 }}>
+                        💡 <b>Khuyên dùng:</b> Hãy <b>TẮT</b> mục này nếu giá trị chỉ là câu chữ mô tả chung chung như &quot;Nhắn tin qua Zalo&quot;, &quot;Trang cá nhân&quot;. Chỉ nên <b>BẬT</b> khi đây là Username, Mã định danh hoặc ID mà người dùng cần chép!
+                      </p>
+                    </div>
+
+                    <label style={{ display: "flex", alignItems: "center", gap: 10, fontSize: ".84rem", cursor: "pointer" }}>
+                      <input
+                        type="checkbox"
+                        checked={channelForm.actionOptions?.copyLink !== false}
+                        onChange={(e) =>
+                          setChannelForm({
+                            ...channelForm,
+                            actionOptions: { ...(channelForm.actionOptions || {}), copyLink: e.target.checked },
+                          })
+                        }
+                        style={{ width: "auto" }}
+                      />
+                      <span>📎 <b>Sao chép đường dẫn URL</b></span>
+                    </label>
+                  </div>
+                )}
+
+                {channelForm.type === "text" && (
+                  <div>
+                    <label style={{ display: "flex", alignItems: "center", gap: 10, fontSize: ".84rem", cursor: "pointer" }}>
+                      <input
+                        type="checkbox"
+                        checked={channelForm.actionOptions?.copyValue !== false}
+                        onChange={(e) =>
+                          setChannelForm({
+                            ...channelForm,
+                            actionOptions: { ...(channelForm.actionOptions || {}), copyValue: e.target.checked },
+                          })
+                        }
+                        style={{ width: "auto" }}
+                      />
+                      <span>📋 Sao chép nội dung văn bản này</span>
+                    </label>
+                  </div>
+                )}
+              </div>
+
+              <div style={{ display: "flex", gap: 20, margin: "16px 0 24px", flexWrap: "wrap" }}>
                 <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: ".88rem" }}>
                   <input
                     type="checkbox"
