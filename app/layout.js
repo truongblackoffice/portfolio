@@ -79,6 +79,11 @@ export default function RootLayout({ children }) {
         <link rel="dns-prefetch" href="https://firestore.googleapis.com" />
         <link rel="preconnect" href="https://identitytoolkit.googleapis.com" crossOrigin="anonymous" />
         <link rel="dns-prefetch" href="https://identitytoolkit.googleapis.com" />
+        <link rel="preconnect" href="https://api.iconify.design" crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href="https://api.iconify.design" />
+        <link rel="preconnect" href="https://cdn.jsdelivr.net" crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href="https://cdn.jsdelivr.net" />
+        <script src="https://cdn.jsdelivr.net/npm/iconify-icon@2/dist/iconify-icon.min.js" async></script>
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
