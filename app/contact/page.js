@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { saveItem, getProfile } from "@/lib/db";
 import { seedProfile, defaultContactConfig } from "@/lib/seed";
 import { renderIcon } from "@/lib/presets";
@@ -21,18 +21,110 @@ export default function Contact() {
   });
   const [loading, setLoading] = useState(false);
   const [st, setSt] = useState(null);
-  const [copiedId, setCopiedId] = useState(null);
+  const [activeMenu, setActiveMenu] = useState(null); // id of channel whose popup is open
+  const menuRef = useRef(null);
 
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
 
-  const handleCopyText = (text, id) => {
+  // Close popup when clicking outside
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (menuRef.current && !menuRef.current.contains(e.target)) {
+        setActiveMenu(null);
+      }
+    }
+    if (activeMenu) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [activeMenu]);
+
+  const handleCopyText = (text) => {
     if (typeof navigator !== "undefined" && navigator.clipboard) {
       navigator.clipboard.writeText(text);
-      setCopiedId(id);
       toast.success("📋 Đã sao chép vào bộ nhớ tạm!");
-      setTimeout(() => setCopiedId(null), 2500);
     }
+    setActiveMenu(null);
   };
+
+  /** Build contextual action list for each channel type */
+  function getChannelActions(ch) {
+    const actions = [];
+    const rawEmail = ch.link?.replace("mailto:", "").trim() || ch.value?.trim();
+    const rawPhone = ch.link?.replace("tel:", "").trim() || ch.value?.trim();
+
+    if (ch.type === "email" && rawEmail) {
+      actions.push({
+        icon: "https://api.iconify.design/simple-icons/gmail.svg?color=%23ea4335",
+        label: "Gửi qua Gmail",
+        href: `https://mail.google.com/mail/?view=cm&to=${encodeURIComponent(rawEmail)}`,
+        target: "_blank",
+      });
+      actions.push({
+        icon: "https://api.iconify.design/simple-icons/microsoftoutlook.svg?color=%230078d4",
+        label: "Gửi qua Outlook",
+        href: `https://outlook.live.com/mail/0/deeplink/compose?to=${encodeURIComponent(rawEmail)}`,
+        target: "_blank",
+      });
+      actions.push({
+        icon: "https://api.iconify.design/simple-icons/yahoo.svg?color=%236001d2",
+        label: "Gửi qua Yahoo Mail",
+        href: `https://compose.mail.yahoo.com/?to=${encodeURIComponent(rawEmail)}`,
+        target: "_blank",
+      });
+      actions.push({
+        icon: "https://api.iconify.design/lucide/mail.svg?color=%238b5cf6",
+        label: "Mở ứng dụng mail mặc định",
+        href: ch.link || `mailto:${rawEmail}`,
+        target: "_self",
+      });
+      actions.push({
+        icon: "https://api.iconify.design/lucide/copy.svg?color=%2306b6d4",
+        label: `Sao chép địa chỉ email`,
+        copy: rawEmail,
+      });
+    } else if (ch.type === "phone") {
+      if (rawPhone) {
+        actions.push({
+          icon: "https://api.iconify.design/simple-icons/zalo.svg?color=%230068ff",
+          label: "Mở Zalo nhắn tin",
+          href: `https://zalo.me/${rawPhone.replace(/\D/g, "")}`,
+          target: "_blank",
+        });
+        actions.push({
+          icon: "https://api.iconify.design/lucide/phone-call.svg?color=%2310b981",
+          label: "Gọi điện thoại",
+          href: `tel:${rawPhone.replace(/\s/g, "")}`,
+          target: "_self",
+        });
+        actions.push({
+          icon: "https://api.iconify.design/lucide/copy.svg?color=%2306b6d4",
+          label: "Sao chép số điện thoại",
+          copy: rawPhone,
+        });
+      }
+    } else if (ch.link) {
+      actions.push({
+        icon: "https://api.iconify.design/lucide/external-link.svg?color=%238b5cf6",
+        label: "Mở liên kết",
+        href: ch.link,
+        target: "_blank",
+      });
+      if (ch.value) {
+        actions.push({
+          icon: "https://api.iconify.design/lucide/copy.svg?color=%2306b6d4",
+          label: `Sao chép "${ch.value}"`,
+          copy: ch.value,
+        });
+      }
+      actions.push({
+        icon: "https://api.iconify.design/lucide/link.svg?color=%2364748b",
+        label: "Sao chép URL",
+        copy: ch.link,
+      });
+    }
+    return actions;
+  }
 
   async function submit(e) {
     e.preventDefault();
@@ -82,25 +174,36 @@ export default function Contact() {
           </h2>
 
           {/* Dynamic Channels */}
+          <div ref={menuRef} style={{ position: "relative" }}>
           {channels.map((ch) => {
-            const isClickable = Boolean(ch.link);
-            const CardWrapper = isClickable && !ch.allowCopy ? "a" : "div";
-            const wrapperProps = isClickable && !ch.allowCopy
-              ? { href: ch.link, target: "_blank", rel: "noreferrer" }
-              : {};
+            const actions = getChannelActions(ch);
+            const hasActions = actions.length > 0;
+            const isOpen = activeMenu === ch.id;
 
             return (
-              <CardWrapper
+              <div
                 key={ch.id}
-                className="card glass contact-method-card reveal"
-                style={{ cursor: isClickable && !ch.allowCopy ? "pointer" : "default" }}
-                {...wrapperProps}
+                className={`card glass contact-method-card reveal ${hasActions ? "contact-method-clickable" : ""}`}
+                style={{ cursor: hasActions ? "pointer" : "default", position: "relative" }}
+                onClick={() => {
+                  if (hasActions) setActiveMenu(isOpen ? null : ch.id);
+                }}
+                role={hasActions ? "button" : undefined}
+                tabIndex={hasActions ? 0 : undefined}
+                onKeyDown={(e) => {
+                  if (hasActions && (e.key === "Enter" || e.key === " ")) {
+                    e.preventDefault();
+                    setActiveMenu(isOpen ? null : ch.id);
+                  }
+                  if (e.key === "Escape") setActiveMenu(null);
+                }}
               >
                 <div
                   className="contact-method-icon"
                   style={{
-                    background: "hsla(262 90% 68% / .18)",
-                    borderColor: "hsla(262 90% 68% / .4)",
+                    background: isOpen ? "hsla(262 90% 68% / .30)" : "hsla(262 90% 68% / .18)",
+                    borderColor: isOpen ? "var(--primary)" : "hsla(262 90% 68% / .4)",
+                    transition: "all .2s",
                   }}
                 >
                   {renderIcon(ch.icon, "💬", { width: 28, height: 28 })}
@@ -114,49 +217,81 @@ export default function Contact() {
                       display: "block",
                       fontSize: ".95rem",
                       wordBreak: "break-all",
-                      margin: "2px 0 6px",
+                      margin: "2px 0 4px",
                     }}
                   >
                     {ch.value || ch.link || "Liên hệ trực tiếp"}
                   </b>
                   {ch.subtitle && (
-                    <div className="muted" style={{ fontSize: ".8rem", marginBottom: 6 }}>
+                    <div className="muted" style={{ fontSize: ".78rem" }}>
                       {ch.subtitle}
                     </div>
                   )}
-
-                  {/* Actions for channel (Link / Copy) */}
-                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 4 }}>
-                    {isClickable && (
-                      <a
-                        href={ch.link}
-                        target={ch.link.startsWith("mailto:") || ch.link.startsWith("tel:") ? "_self" : "_blank"}
-                        rel="noreferrer"
-                        className="btn btn-primary btn-sm"
-                        style={{ padding: "4px 12px", fontSize: ".76rem" }}
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        {ch.type === "email" ? "Gửi thư ↗" : ch.type === "phone" ? "Gọi / Chat ↗" : "Mở liên kết ↗"}
-                      </a>
-                    )}
-                    {ch.allowCopy && (ch.value || ch.link) && (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleCopyText(ch.value || ch.link, ch.id);
-                        }}
-                        className="btn btn-ghost btn-sm"
-                        style={{ padding: "4px 12px", fontSize: ".76rem" }}
-                      >
-                        {copiedId === ch.id ? "✓ Đã chép" : "📋 Sao chép"}
-                      </button>
-                    )}
-                  </div>
                 </div>
-              </CardWrapper>
+
+                {/* Hint arrow */}
+                {hasActions && (
+                  <div
+                    style={{
+                      flexShrink: 0,
+                      color: "var(--muted)",
+                      fontSize: ".8rem",
+                      transition: "transform .2s",
+                      transform: isOpen ? "rotate(180deg)" : "none",
+                    }}
+                  >
+                    ▾
+                  </div>
+                )}
+
+                {/* Contextual Action Popup */}
+                {isOpen && (
+                  <div
+                    className="contact-action-popup glass"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div style={{ fontSize: ".74rem", fontWeight: 700, color: "var(--muted)", letterSpacing: ".05em", padding: "4px 12px 8px", textTransform: "uppercase" }}>
+                      Chọn hành động
+                    </div>
+                    {actions.map((action, i) => {
+                      if (action.copy) {
+                        return (
+                          <button
+                            key={i}
+                            type="button"
+                            className="contact-action-item"
+                            onClick={() => handleCopyText(action.copy)}
+                          >
+                            <span style={{ width: 20, height: 20, display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                              {renderIcon(action.icon, "📋", { width: 18, height: 18 })}
+                            </span>
+                            <span>{action.label}</span>
+                          </button>
+                        );
+                      }
+                      return (
+                        <a
+                          key={i}
+                          href={action.href}
+                          target={action.target || "_blank"}
+                          rel="noreferrer"
+                          className="contact-action-item"
+                          onClick={() => setActiveMenu(null)}
+                        >
+                          <span style={{ width: 20, height: 20, display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                            {renderIcon(action.icon, "🔗", { width: 18, height: 18 })}
+                          </span>
+                          <span>{action.label}</span>
+                          <span style={{ marginLeft: "auto", opacity: .4, fontSize: ".7rem" }}>↗</span>
+                        </a>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             );
           })}
+          </div>
 
           {channels.length === 0 && (
             <div className="empty" style={{ padding: 20 }}>
