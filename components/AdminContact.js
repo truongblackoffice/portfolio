@@ -1,7 +1,8 @@
 "use client";
 import { useState, useEffect } from "react";
-import { getProfile, saveProfile } from "@/lib/db";
+import { getProfile, saveProfile, uploadFile } from "@/lib/db";
 import { defaultContactConfig } from "@/lib/seed";
+import { ALL_ICON_TOPICS, renderIcon, isImageIcon } from "@/lib/presets";
 import { toast } from "@/lib/toast";
 
 const CHANNEL_PRESETS = [
@@ -12,7 +13,7 @@ const CHANNEL_PRESETS = [
   { title: "GitHub Profile", value: "username", icon: "🐙", link: "https://github.com/username", type: "link", subtitle: "Khám phá kho mã nguồn mở", allowCopy: false },
   { title: "Facebook / Messenger", value: "Trang cá nhân", icon: "📘", link: "https://facebook.com/username", type: "link", subtitle: "Nhắn tin Facebook trực tiếp", allowCopy: false },
   { title: "LinkedIn Profile", value: "Hồ sơ chuyên nghiệp", icon: "💼", link: "https://linkedin.com/in/username", type: "link", subtitle: "Kết nối mạng lưới công việc", allowCopy: false },
-  { title: "Discord", value: "username#1234", icon: "🎮", link: "https://discord.gg/...", type: "link", subtitle: "Tham gia máy chủ Discord", allowCopy: true },
+  { title: "Discord Server", value: "username#1234", icon: "🎮", link: "https://discord.gg/...", type: "link", subtitle: "Tham gia máy chủ Discord", allowCopy: true },
 ];
 
 export default function AdminContact() {
@@ -34,6 +35,12 @@ export default function AdminContact() {
     enabled: true,
   });
   const [showChannelModal, setShowChannelModal] = useState(false);
+  const [uploadingIcon, setUploadingIcon] = useState(false);
+
+  // Icon Picker state inside Modal
+  const [activeIconGroup, setActiveIconGroup] = useState("contact");
+  const [iconSearch, setIconSearch] = useState("");
+  const [showIconPicker, setShowIconPicker] = useState(false);
 
   // Modal / Form state for FAQ
   const [editingFaq, setEditingFaq] = useState(null);
@@ -78,9 +85,31 @@ export default function AdminContact() {
     }
   };
 
+  // Upload custom icon image
+  const handleIconUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      return toast.error("Vui lòng chọn tệp hình ảnh hợp lệ (PNG, SVG, JPG, WEBP, GIF).");
+    }
+    setUploadingIcon(true);
+    try {
+      const url = await uploadFile(file);
+      setChannelForm((prev) => ({ ...prev, icon: url }));
+      toast.success("🎉 Tải ảnh icon lên thành công!");
+    } catch (err) {
+      console.error(err);
+      toast.error("Lỗi tải ảnh icon: " + err.message);
+    } finally {
+      setUploadingIcon(false);
+    }
+  };
+
   // Channel Operations
   const openAddChannel = (preset = null) => {
     setEditingChannel(null);
+    setShowIconPicker(false);
+    setIconSearch("");
     if (preset) {
       setChannelForm({
         ...preset,
@@ -103,6 +132,8 @@ export default function AdminContact() {
 
   const openEditChannel = (ch) => {
     setEditingChannel(ch);
+    setShowIconPicker(false);
+    setIconSearch("");
     setChannelForm({ ...ch });
     setShowChannelModal(true);
   };
@@ -198,6 +229,14 @@ export default function AdminContact() {
     handleSaveAll(defaultContactConfig);
   };
 
+  // Filter icons for current group and search query
+  const currentGroupObj = ALL_ICON_TOPICS.find((g) => g.id === activeIconGroup) || ALL_ICON_TOPICS[0];
+  const filteredIcons = currentGroupObj.icons.filter((item) => {
+    if (!iconSearch.trim()) return true;
+    const q = iconSearch.toLowerCase();
+    return item.label.toLowerCase().includes(q) || item.icon.includes(q);
+  });
+
   if (loading) return <div className="empty">Đang tải cấu hình liên hệ...</div>;
 
   return (
@@ -207,7 +246,7 @@ export default function AdminContact() {
         <div>
           <h2 style={{ fontSize: "1.6rem" }}>📞 Quản lý Thông tin &amp; Kênh Liên hệ</h2>
           <p className="muted" style={{ fontSize: ".88rem" }}>
-            Tùy biến các phương thức liên lạc trực tiếp, mạng xã hội, thời gian cam kết và câu hỏi thường gặp FAQ trên trang <code>/contact</code>.
+            Tùy biến các phương thức liên lạc trực tiếp, mạng xã hội, upload logo icon hoặc chọn icon theo chủ đề (hơn 30 icon/chủ đề).
           </p>
         </div>
         <div style={{ display: "flex", gap: 10 }}>
@@ -294,7 +333,7 @@ export default function AdminContact() {
               <span>⚡</span> Danh sách các Kênh liên hệ ({config.channels?.length || 0})
             </h3>
             <p className="muted" style={{ fontSize: ".82rem" }}>
-              Bật/tắt, chỉnh sửa hoặc thêm mới các kênh (Email, Zalo, Telegram, SĐT, Facebook, GitHub, v.v.).
+              Hỗ trợ cả tải ảnh logo icon (PNG/SVG) từ máy tính hoặc chọn icon theo 6 chủ đề phong phú.
             </p>
           </div>
           <button type="button" className="btn btn-primary btn-sm" onClick={() => openAddChannel()}>
@@ -340,8 +379,22 @@ export default function AdminContact() {
               }}
             >
               <div style={{ display: "flex", alignItems: "center", gap: 14, minWidth: 0, flex: 1 }}>
-                <span style={{ fontSize: "1.8rem", width: 44, height: 44, display: "grid", placeItems: "center", borderRadius: 10, background: "hsla(0 0% 100% / .06)" }}>
-                  {ch.icon || "💬"}
+                <span
+                  style={{
+                    fontSize: "1.6rem",
+                    width: 46,
+                    height: 46,
+                    display: "grid",
+                    placeItems: "center",
+                    borderRadius: 12,
+                    background: "hsla(0 0% 100% / .08)",
+                    border: "1px solid var(--glass-border)",
+                    overflow: "hidden",
+                    padding: isImageIcon(ch.icon) ? 6 : 0,
+                    flexShrink: 0,
+                  }}
+                >
+                  {renderIcon(ch.icon, "💬")}
                 </span>
                 <div style={{ minWidth: 0, flex: 1 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -354,6 +407,11 @@ export default function AdminContact() {
                     {ch.allowCopy && (
                       <span style={{ fontSize: ".7rem", padding: "1px 8px", borderRadius: 999, background: "hsla(150 70% 50% / .15)", color: "hsl(150 70% 45%)" }}>
                         Hỗ trợ chép nhanh
+                      </span>
+                    )}
+                    {isImageIcon(ch.icon) && (
+                      <span style={{ fontSize: ".7rem", padding: "1px 8px", borderRadius: 999, background: "hsla(262 90% 68% / .15)", color: "var(--primary)" }}>
+                        Ảnh tải lên
                       </span>
                     )}
                   </div>
@@ -500,13 +558,13 @@ export default function AdminContact() {
       </div>
 
       {/* ====================================================================
-          MODAL: THÊM / SỬA KÊNH LIÊN HỆ
+          MODAL: THÊM / SỬA KÊNH LIÊN HỆ (KÈM UPLOAD ICON & PICKER THEO CHỦ ĐỀ)
           ==================================================================== */}
       {showChannelModal && (
         <div className="ai-modal-overlay" onClick={() => setShowChannelModal(false)}>
           <div
             className="ai-modal-container glass"
-            style={{ width: "min(560px, 94%)", padding: 28, borderRadius: 20 }}
+            style={{ width: "min(640px, 94%)", maxHeight: "90vh", overflowY: "auto", padding: 28, borderRadius: 20 }}
             onClick={(e) => e.stopPropagation()}
           >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
@@ -524,16 +582,184 @@ export default function AdminContact() {
             </div>
 
             <form onSubmit={saveChannelForm}>
-              <div style={{ display: "grid", gridTemplateColumns: "80px 1fr", gap: 12 }}>
-                <div className="field">
-                  <label>Icon</label>
-                  <input
-                    value={channelForm.icon}
-                    onChange={(e) => setChannelForm({ ...channelForm, icon: e.target.value })}
-                    style={{ textAlign: "center", fontSize: "1.3rem", padding: "10px" }}
-                    placeholder="💬"
-                  />
+              {/* Icon Section (Preview + Upload + Picker Button) */}
+              <div style={{ marginBottom: 18, padding: 16, borderRadius: 14, background: "hsla(0 0% 100% / .04)", border: "1px solid var(--glass-border)" }}>
+                <div style={{ fontSize: ".82rem", fontWeight: 600, color: "var(--muted)", marginBottom: 10 }}>
+                  BIỂU TƯỢNG (ICON / LOGO)
                 </div>
+
+                <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
+                  {/* Current Icon Preview Box */}
+                  <div
+                    style={{
+                      width: 58,
+                      height: 58,
+                      borderRadius: 14,
+                      background: "hsla(262 90% 68% / .15)",
+                      border: "2px solid var(--primary)",
+                      display: "grid",
+                      placeItems: "center",
+                      fontSize: "2rem",
+                      overflow: "hidden",
+                      padding: isImageIcon(channelForm.icon) ? 8 : 0,
+                      flexShrink: 0,
+                    }}
+                    title="Icon hiện tại của kênh"
+                  >
+                    {renderIcon(channelForm.icon, "💬")}
+                  </div>
+
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8, flex: 1, minWidth: 200 }}>
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                      {/* Button Open Topic Icon Picker */}
+                      <button
+                        type="button"
+                        className="btn btn-ghost btn-sm"
+                        onClick={() => setShowIconPicker(!showIconPicker)}
+                        style={{ fontSize: ".8rem" }}
+                      >
+                        {showIconPicker ? "▲ Đóng bộ chọn icon" : "🎨 Chọn icon theo chủ đề (200+ icon)"}
+                      </button>
+
+                      {/* Button Upload Image Icon */}
+                      <label
+                        className="btn btn-primary btn-sm"
+                        style={{ cursor: uploadingIcon ? "wait" : "pointer", fontSize: ".8rem" }}
+                      >
+                        {uploadingIcon ? (
+                          <>
+                            <span className="spinner" style={{ width: 14, height: 14 }} />
+                            Đang tải ảnh...
+                          </>
+                        ) : (
+                          "📁 Tải ảnh logo từ máy"
+                        )}
+                        <input
+                          type="file"
+                          accept="image/*"
+                          style={{ display: "none" }}
+                          disabled={uploadingIcon}
+                          onChange={handleIconUpload}
+                        />
+                      </label>
+                    </div>
+
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <input
+                        value={channelForm.icon}
+                        onChange={(e) => setChannelForm({ ...channelForm, icon: e.target.value })}
+                        placeholder="Nhập emoji hoặc link ảnh..."
+                        style={{ fontSize: ".8rem", padding: "6px 10px" }}
+                      />
+                      {isImageIcon(channelForm.icon) && (
+                        <button
+                          type="button"
+                          className="btn btn-ghost btn-sm"
+                          onClick={() => setChannelForm({ ...channelForm, icon: "💬" })}
+                          style={{ fontSize: ".75rem", padding: "6px 10px", color: "var(--danger)" }}
+                          title="Chuyển về emoji mặc định"
+                        >
+                          Xóa ảnh
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* EXPANDABLE TOPIC ICON PICKER */}
+                {showIconPicker && (
+                  <div
+                    style={{
+                      marginTop: 16,
+                      padding: 14,
+                      borderRadius: 14,
+                      background: "hsla(0 0% 0% / .25)",
+                      border: "1px solid var(--glass-border)",
+                    }}
+                  >
+                    {/* Topic Tabs */}
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
+                      {ALL_ICON_TOPICS.map((topic) => (
+                        <button
+                          key={topic.id}
+                          type="button"
+                          onClick={() => setActiveIconGroup(topic.id)}
+                          style={{
+                            padding: "6px 12px",
+                            borderRadius: 999,
+                            fontSize: ".78rem",
+                            border: "1px solid var(--glass-border)",
+                            background: activeIconGroup === topic.id ? "var(--grad)" : "hsla(0 0% 100% / .06)",
+                            color: activeIconGroup === topic.id ? "#fff" : "var(--text)",
+                            cursor: "pointer",
+                            fontWeight: activeIconGroup === topic.id ? 700 : 500,
+                            transition: ".2s",
+                          }}
+                        >
+                          {topic.name} ({topic.icons.length})
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Search inside Topic */}
+                    <div style={{ marginBottom: 10 }}>
+                      <input
+                        value={iconSearch}
+                        onChange={(e) => setIconSearch(e.target.value)}
+                        placeholder={`🔍 Tìm icon trong nhóm "${currentGroupObj.name}"...`}
+                        style={{ fontSize: ".8rem", padding: "6px 12px" }}
+                      />
+                    </div>
+
+                    {/* Icons Grid (>= 30 icons per topic) */}
+                    <div
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: "repeat(auto-fill, minmax(42px, 1fr))",
+                        gap: 6,
+                        maxHeight: 180,
+                        overflowY: "auto",
+                        padding: 4,
+                      }}
+                    >
+                      {filteredIcons.map((item, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => {
+                            setChannelForm({ ...channelForm, icon: item.icon });
+                            toast.success(`Đã chọn icon: ${item.icon} (${item.label})`);
+                          }}
+                          style={{
+                            width: "100%",
+                            aspectRatio: "1",
+                            fontSize: "1.4rem",
+                            display: "grid",
+                            placeItems: "center",
+                            background: channelForm.icon === item.icon ? "hsla(262 90% 68% / .3)" : "hsla(0 0% 100% / .06)",
+                            border: channelForm.icon === item.icon ? "2px solid var(--primary)" : "1px solid var(--glass-border)",
+                            borderRadius: 10,
+                            cursor: "pointer",
+                            transition: ".15s",
+                          }}
+                          title={item.label}
+                        >
+                          {item.icon}
+                        </button>
+                      ))}
+
+                      {filteredIcons.length === 0 && (
+                        <div style={{ gridColumn: "1 / -1", textAlign: "center", padding: 14, color: "var(--muted)", fontSize: ".82rem" }}>
+                          Không tìm thấy icon phù hợp với &quot;{iconSearch}&quot;
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Title & Type */}
+              <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: 14 }}>
                 <div className="field">
                   <label>Tiêu đề kênh liên hệ <span style={{ color: "var(--danger)" }}>*</span></label>
                   <input
@@ -542,6 +768,19 @@ export default function AdminContact() {
                     onChange={(e) => setChannelForm({ ...channelForm, title: e.target.value })}
                     placeholder="Ví dụ: Email cá nhân, Zalo & Chat nhanh..."
                   />
+                </div>
+
+                <div className="field">
+                  <label>Loại kênh (Type)</label>
+                  <select
+                    value={channelForm.type}
+                    onChange={(e) => setChannelForm({ ...channelForm, type: e.target.value })}
+                  >
+                    <option value="email">✉️ Email (Gửi thư)</option>
+                    <option value="phone">📱 Số điện thoại / Zalo</option>
+                    <option value="link">🌐 Liên kết mạng xã hội / Web</option>
+                    <option value="text">📝 Văn bản thuần</option>
+                  </select>
                 </div>
               </div>
 
@@ -555,7 +794,7 @@ export default function AdminContact() {
               </div>
 
               <div className="field">
-                <label>Đường dẫn liên kết (Link / URL / mailto / tel)</label>
+                <label>Đường dẫn liên kết (Link URL / mailto / tel)</label>
                 <input
                   value={channelForm.link}
                   onChange={(e) => setChannelForm({ ...channelForm, link: e.target.value })}
@@ -590,7 +829,7 @@ export default function AdminContact() {
                     onChange={(e) => setChannelForm({ ...channelForm, enabled: e.target.checked })}
                     style={{ width: "auto" }}
                   />
-                  Bật hiển thị kênh này
+                  Bật hiển thị kênh này trên website
                 </label>
               </div>
 
