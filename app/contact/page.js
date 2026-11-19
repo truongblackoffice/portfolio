@@ -1,19 +1,16 @@
 "use client";
 import { useState } from "react";
 import { saveItem, getProfile } from "@/lib/db";
-import { seedProfile } from "@/lib/seed";
+import { seedProfile, defaultContactConfig } from "@/lib/seed";
 import useAsync from "@/lib/useAsync";
 import { toast } from "@/lib/toast";
 
 export default function Contact() {
   const { data: p } = useAsync(getProfile, [], "contact_profile", seedProfile);
   const profile = p || seedProfile;
-  const socials = profile.socials || {};
-
-  const adminEmail = socials.email || process.env.NEXT_PUBLIC_ADMIN_EMAIL || "pcrongvang@gmail.com";
-  const githubUrl = socials.github || "https://github.com/truongblackoffice";
-  const facebookUrl = socials.facebook || "";
-  const linkedinUrl = socials.linkedin || "";
+  const config = profile.contactConfig || defaultContactConfig;
+  const channels = (config.channels || defaultContactConfig.channels).filter((c) => c.enabled !== false);
+  const faqs = config.faqs || defaultContactConfig.faqs;
 
   const [f, setF] = useState({
     name: "",
@@ -23,16 +20,16 @@ export default function Contact() {
   });
   const [loading, setLoading] = useState(false);
   const [st, setSt] = useState(null);
-  const [copied, setCopied] = useState(false);
+  const [copiedId, setCopiedId] = useState(null);
 
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
 
-  const handleCopyEmail = () => {
+  const handleCopyText = (text, id) => {
     if (typeof navigator !== "undefined" && navigator.clipboard) {
-      navigator.clipboard.writeText(adminEmail);
-      setCopied(true);
-      toast.success("📋 Đã sao chép địa chỉ email vào bộ nhớ tạm!");
-      setTimeout(() => setCopied(false), 2500);
+      navigator.clipboard.writeText(text);
+      setCopiedId(id);
+      toast.success("📋 Đã sao chép vào bộ nhớ tạm!");
+      setTimeout(() => setCopiedId(null), 2500);
     }
   };
 
@@ -65,10 +62,11 @@ export default function Contact() {
           📬 KẾT NỐI VỚI MÌNH
         </span>
         <h1 style={{ fontSize: "clamp(2.2rem, 4.5vw, 3.2rem)", margin: "14px 0 16px" }}>
-          Liên hệ &amp; <span className="gradient-text">Trao đổi thông tin</span>
+          {config.headline || "Liên hệ & Trao đổi thông tin"}
         </h1>
         <p className="muted" style={{ fontSize: "1.05rem", lineHeight: 1.65 }}>
-          Bạn có thắc mắc về đề thi trắc nghiệm, muốn chia sẻ tài liệu học tập, góp ý bài viết hay đề xuất hợp tác lập trình? Đừng ngần ngại để lại lời nhắn hoặc kết nối trực tiếp qua các kênh bên dưới!
+          {config.subheadline ||
+            "Bạn có thắc mắc về đề thi trắc nghiệm, muốn chia sẻ tài liệu học tập, góp ý bài viết hay đề xuất hợp tác lập trình? Đừng ngần ngại để lại lời nhắn hoặc kết nối trực tiếp qua các kênh bên dưới!"}
         </p>
       </div>
 
@@ -82,109 +80,112 @@ export default function Contact() {
             <span>⚡</span> Kênh liên hệ trực tiếp
           </h2>
 
-          {/* Email Direct */}
-          <div className="card glass contact-method-card reveal" style={{ cursor: "default" }}>
-            <div className="contact-method-icon" style={{ background: "hsla(262 90% 68% / .18)", borderColor: "hsla(262 90% 68% / .4)" }}>
-              ✉️
-            </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: ".8rem", color: "var(--muted)", fontWeight: 500 }}>Email cá nhân &amp; Quản trị</div>
-              <b style={{ display: "block", fontSize: ".95rem", wordBreak: "break-all", margin: "2px 0 8px" }}>
-                {adminEmail}
-              </b>
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                <a href={`mailto:${adminEmail}`} className="btn btn-primary btn-sm" style={{ padding: "4px 12px", fontSize: ".78rem" }}>
-                  Gửi thư ↗
-                </a>
-                <button
-                  type="button"
-                  onClick={handleCopyEmail}
-                  className="btn btn-ghost btn-sm"
-                  style={{ padding: "4px 12px", fontSize: ".78rem" }}
+          {/* Dynamic Channels */}
+          {channels.map((ch) => {
+            const isClickable = Boolean(ch.link);
+            const CardWrapper = isClickable && !ch.allowCopy ? "a" : "div";
+            const wrapperProps = isClickable && !ch.allowCopy
+              ? { href: ch.link, target: "_blank", rel: "noreferrer" }
+              : {};
+
+            return (
+              <CardWrapper
+                key={ch.id}
+                className="card glass contact-method-card reveal"
+                style={{ cursor: isClickable && !ch.allowCopy ? "pointer" : "default" }}
+                {...wrapperProps}
+              >
+                <div
+                  className="contact-method-icon"
+                  style={{
+                    background: "hsla(262 90% 68% / .18)",
+                    borderColor: "hsla(262 90% 68% / .4)",
+                  }}
                 >
-                  {copied ? "✓ Đã chép" : "📋 Sao chép"}
-                </button>
-              </div>
-            </div>
-          </div>
+                  {ch.icon || "💬"}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: ".8rem", color: "var(--muted)", fontWeight: 500 }}>
+                    {ch.title}
+                  </div>
+                  <b
+                    style={{
+                      display: "block",
+                      fontSize: ".95rem",
+                      wordBreak: "break-all",
+                      margin: "2px 0 6px",
+                    }}
+                  >
+                    {ch.value || ch.link || "Liên hệ trực tiếp"}
+                  </b>
+                  {ch.subtitle && (
+                    <div className="muted" style={{ fontSize: ".8rem", marginBottom: 6 }}>
+                      {ch.subtitle}
+                    </div>
+                  )}
 
-          {/* GitHub Channel */}
-          <a
-            href={githubUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="card glass contact-method-card reveal"
-          >
-            <div className="contact-method-icon" style={{ background: "hsla(190 95% 58% / .18)", borderColor: "hsla(190 95% 58% / .4)" }}>
-              🐙
-            </div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: ".8rem", color: "var(--muted)", fontWeight: 500 }}>GitHub / Mã nguồn mở</div>
-              <b style={{ display: "block", fontSize: ".95rem" }}>truongblackoffice</b>
-              <span className="muted" style={{ fontSize: ".8rem" }}>Xem các dự án &amp; repositories công khai ↗</span>
-            </div>
-          </a>
+                  {/* Actions for channel (Link / Copy) */}
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 4 }}>
+                    {isClickable && (
+                      <a
+                        href={ch.link}
+                        target={ch.link.startsWith("mailto:") || ch.link.startsWith("tel:") ? "_self" : "_blank"}
+                        rel="noreferrer"
+                        className="btn btn-primary btn-sm"
+                        style={{ padding: "4px 12px", fontSize: ".76rem" }}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {ch.type === "email" ? "Gửi thư ↗" : ch.type === "phone" ? "Gọi / Chat ↗" : "Mở liên kết ↗"}
+                      </a>
+                    )}
+                    {ch.allowCopy && (ch.value || ch.link) && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleCopyText(ch.value || ch.link, ch.id);
+                        }}
+                        className="btn btn-ghost btn-sm"
+                        style={{ padding: "4px 12px", fontSize: ".76rem" }}
+                      >
+                        {copiedId === ch.id ? "✓ Đã chép" : "📋 Sao chép"}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </CardWrapper>
+            );
+          })}
 
-          {/* Facebook / Messenger */}
-          {facebookUrl ? (
-            <a
-              href={facebookUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="card glass contact-method-card reveal"
-            >
-              <div className="contact-method-icon" style={{ background: "hsla(220 90% 60% / .18)", borderColor: "hsla(220 90% 60% / .4)" }}>
-                📘
-              </div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: ".8rem", color: "var(--muted)", fontWeight: 500 }}>Facebook / Messenger</div>
-                <b style={{ display: "block", fontSize: ".95rem" }}>Trang cá nhân</b>
-                <span className="muted" style={{ fontSize: ".8rem" }}>Nhắn tin trò chuyện trực tiếp ↗</span>
-              </div>
-            </a>
-          ) : (
-            <div className="card glass contact-method-card reveal" style={{ cursor: "default" }}>
-              <div className="contact-method-icon" style={{ background: "hsla(220 90% 60% / .18)", borderColor: "hsla(220 90% 60% / .4)" }}>
-                💬
-              </div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: ".8rem", color: "var(--muted)", fontWeight: 500 }}>Hỗ trợ nhanh</div>
-                <b style={{ display: "block", fontSize: ".95rem" }}>Zalo &amp; Tin nhắn trực tiếp</b>
-                <span className="muted" style={{ fontSize: ".8rem" }}>Liên hệ qua form bên cạnh để nhận phản hồi nhanh</span>
-              </div>
+          {channels.length === 0 && (
+            <div className="empty" style={{ padding: 20 }}>
+              Chưa có kênh liên hệ nào được cấu hình.
             </div>
-          )}
-
-          {/* LinkedIn Channel */}
-          {linkedinUrl && (
-            <a
-              href={linkedinUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="card glass contact-method-card reveal"
-            >
-              <div className="contact-method-icon" style={{ background: "hsla(200 95% 50% / .18)", borderColor: "hsla(200 95% 50% / .4)" }}>
-                💼
-              </div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: ".8rem", color: "var(--muted)", fontWeight: 500 }}>Mạng lưới chuyên nghiệp</div>
-                <b style={{ display: "block", fontSize: ".95rem" }}>LinkedIn Profile</b>
-                <span className="muted" style={{ fontSize: ".8rem" }}>Kết nối cơ hội nghề nghiệp &amp; dự án ↗</span>
-              </div>
-            </a>
           )}
 
           {/* Response Commitment Box */}
           <div className="card glass reveal" style={{ padding: 22, marginTop: 24, borderRadius: 16 }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
               <span className="contact-badge">
-                <span style={{ width: 7, height: 7, borderRadius: "50%", background: "hsl(150 70% 45%)", display: "inline-block" }} />
-                Đang trực tuyến
+                <span
+                  style={{
+                    width: 7,
+                    height: 7,
+                    borderRadius: "50%",
+                    background: "hsl(150 70% 45%)",
+                    display: "inline-block",
+                  }}
+                />
+                {config.statusText || "Đang trực tuyến"}
               </span>
-              <span className="muted" style={{ fontSize: ".78rem" }}>GMT+7 (Việt Nam)</span>
+              <span className="muted" style={{ fontSize: ".78rem" }}>
+                {config.locationText || "GMT+7 (Việt Nam)"}
+              </span>
             </div>
             <p className="muted" style={{ fontSize: ".88rem", lineHeight: 1.6 }}>
-              ⏱️ <b>Cam kết phản hồi:</b> Mình thường xuyên kiểm tra hòm thư và sẽ nỗ lực phản hồi mọi tin nhắn của bạn trong vòng <b>2 đến 6 giờ</b> làm việc.
+              ⏱️ <b>Cam kết phản hồi:</b>{" "}
+              {config.responseTime ||
+                "Mình thường xuyên kiểm tra hòm thư và sẽ nỗ lực phản hồi mọi tin nhắn của bạn trong vòng 2 đến 6 giờ làm việc."}
             </p>
           </div>
         </div>
@@ -211,12 +212,14 @@ export default function Contact() {
 
             {st === "err" && (
               <div className="msg err">
-                ⚠️ Gửi lời nhắn thất bại. Vui lòng kiểm tra lại kết nối mạng hoặc gửi thư trực tiếp đến {adminEmail}.
+                ⚠️ Gửi lời nhắn thất bại. Vui lòng kiểm tra lại kết nối mạng hoặc thử lại sau.
               </div>
             )}
 
             <div className="field">
-              <label htmlFor="c-name">Họ và tên của bạn <span style={{ color: "var(--danger)" }}>*</span></label>
+              <label htmlFor="c-name">
+                Họ và tên của bạn <span style={{ color: "var(--danger)" }}>*</span>
+              </label>
               <input
                 id="c-name"
                 required
@@ -227,7 +230,9 @@ export default function Contact() {
             </div>
 
             <div className="field">
-              <label htmlFor="c-email">Địa chỉ Email phản hồi <span style={{ color: "var(--danger)" }}>*</span></label>
+              <label htmlFor="c-email">
+                Địa chỉ Email phản hồi <span style={{ color: "var(--danger)" }}>*</span>
+              </label>
               <input
                 id="c-email"
                 type="email"
@@ -251,7 +256,9 @@ export default function Contact() {
             </div>
 
             <div className="field">
-              <label htmlFor="c-msg">Nội dung chi tiết lời nhắn <span style={{ color: "var(--danger)" }}>*</span></label>
+              <label htmlFor="c-msg">
+                Nội dung chi tiết lời nhắn <span style={{ color: "var(--danger)" }}>*</span>
+              </label>
               <textarea
                 id="c-msg"
                 required
@@ -285,44 +292,25 @@ export default function Contact() {
       {/* ====================================================================
           BOTTOM SECTION: FREQUENTLY ASKED QUESTIONS (FAQ)
           ==================================================================== */}
-      <section className="section" style={{ marginTop: 20 }}>
-        <div className="section-head" style={{ textAlign: "center", display: "block" }}>
-          <span className="eyebrow glass" style={{ fontSize: ".8rem", padding: "4px 12px" }}>
-            HỎI ĐÁP NHANH
-          </span>
-          <h2 style={{ marginTop: 8 }}>Câu hỏi thường gặp (FAQ)</h2>
-        </div>
-
-        <div className="grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))" }}>
-          <div className="card glass contact-faq-item reveal">
-            <h4>❓ Nền tảng ôn thi trắc nghiệm có mất phí không?</h4>
-            <p>
-              Hoàn toàn <b>miễn phí 100%</b>! Bạn có thể thoải mái ôn tập từng câu kèm giải thích, làm bài thi thử bấm giờ, xem bảng xếp hạng và nhận chứng chỉ hoàn thành mà không phải trả bất kỳ chi phí nào.
-            </p>
+      {faqs && faqs.length > 0 && (
+        <section className="section" style={{ marginTop: 20 }}>
+          <div className="section-head" style={{ textAlign: "center", display: "block" }}>
+            <span className="eyebrow glass" style={{ fontSize: ".8rem", padding: "4px 12px" }}>
+              HỎI ĐÁP NHANH
+            </span>
+            <h2 style={{ marginTop: 8 }}>Câu hỏi thường gặp (FAQ)</h2>
           </div>
 
-          <div className="card glass contact-faq-item reveal">
-            <h4>🤖 Trợ lý AI tạo đề thi hoạt động như thế nào?</h4>
-            <p>
-              Hệ thống tích hợp mô hình <b>Google Gemini AI</b> tiên tiến, có khả năng tự động đọc hiểu tài liệu Word (.docx), PowerPoint (.pptx), PDF để tạo hàng trăm câu hỏi trắc nghiệm chuẩn xác theo từng cấp độ khó.
-            </p>
+          <div className="grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))" }}>
+            {faqs.map((faq) => (
+              <div key={faq.id} className="card glass contact-faq-item reveal">
+                <h4>{faq.question}</h4>
+                <p>{faq.answer}</p>
+              </div>
+            ))}
           </div>
-
-          <div className="card glass contact-faq-item reveal">
-            <h4>📚 Tôi có thể đóng góp tài liệu hoặc câu hỏi không?</h4>
-            <p>
-              Rất hoan nghênh! Bạn có thể gửi thông tin qua biểu mẫu liên hệ ở trên hoặc email trực tiếp. Mình sẽ kiểm duyệt, gắn tag tên tác giả/người đóng góp và xuất bản lên kho tài liệu công khai.
-            </p>
-          </div>
-
-          <div className="card glass contact-faq-item reveal">
-            <h4>⏱️ Sau bao lâu tôi sẽ nhận được email phản hồi?</h4>
-            <p>
-              Mọi tin nhắn gửi qua biểu mẫu đều được thông báo tức thì đến quản trị viên. Bạn sẽ nhận được email phản hồi chi tiết trong vòng <b>2 đến 6 giờ</b> làm việc.
-            </p>
-          </div>
-        </div>
-      </section>
+        </section>
+      )}
     </div>
   );
 }

@@ -24,6 +24,7 @@ import AdminCategories from "@/components/AdminCategories";
 import AdminQuizzes from "@/components/AdminQuizzes";
 import AdminAnalytics from "@/components/AdminAnalytics";
 import AdminSecurity from "@/components/AdminSecurity";
+import AdminContact from "@/components/AdminContact";
 
 // [id, nhãn]
 const TABS = [
@@ -35,6 +36,7 @@ const TABS = [
   ["media", "🖼️ Thư viện Media"],
   ["profile", "👤 Hồ sơ cá nhân"],
   ["appearance", "🎨 Giao diện & Banner"],
+  ["contact", "📞 Quản lý Liên hệ"],
   ["security", "🛡️ Bảo mật & Bảo vệ"],
   ["users", "👥 Quản lý tài khoản"],
   ["messages", "📩 Hòm thư liên hệ"],
@@ -115,6 +117,7 @@ export default function Admin() {
       {currentTab === "media" && hasPermission(user, "media") && <AdminMedia />}
       {currentTab === "profile" && hasPermission(user, "profile") && <AdminProfileVisual />}
       {currentTab === "appearance" && hasPermission(user, "appearance") && <Appearance />}
+      {currentTab === "contact" && hasPermission(user, "contact") && <AdminContact />}
       {currentTab === "security" && hasPermission(user, "security") && <AdminSecurity />}
       {currentTab === "users" && hasPermission(user, "users") && <Users />}
       {currentTab === "messages" && hasPermission(user, "messages") && <Messages />}
