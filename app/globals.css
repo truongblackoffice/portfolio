@@ -130,6 +130,9 @@ img { max-width: 100%; }
 
 /* Hero */
 .hero { display: grid; grid-template-columns: 1.3fr 1fr; gap: 48px; align-items: center; padding: 90px 0 40px; }
+.hero.no-avatar { grid-template-columns: 1fr; max-width: 800px; margin-inline: auto; text-align: center; }
+.hero.no-avatar p { margin-inline: auto; }
+.hero.no-avatar .hero-actions { justify-content: center; }
 .hero .eyebrow { display: inline-block; padding: 6px 16px; border-radius: 999px; font-size: .85rem; margin-bottom: 20px; color: var(--accent); font-weight: 600; }
 .hero h1 { font-size: clamp(2.4rem, 5.5vw, 4rem); font-weight: 800; margin-bottom: 20px; }
 .hero p { color: var(--muted); font-size: 1.1rem; max-width: 560px; margin-bottom: 30px; }

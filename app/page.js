@@ -37,7 +37,7 @@ export default function Home() {
 
   return (
     <div className="container">
-      <section className="hero reveal">
+      <section className={`hero reveal ${profile.avatar ? "" : "no-avatar"}`}>
         <div>
           <span className="eyebrow glass">{site.heroBadge || "👋 Chào mừng bạn ghé thăm"}</span>
           <h1>Mình là <span className="gradient-text">{profile.name || "Nguyễn Mạnh Trường"}</span></h1>
@@ -47,18 +47,20 @@ export default function Home() {
             <Link href="/documents" className="btn btn-ghost" id="cta-docs">Kho tài liệu</Link>
           </div>
         </div>
-        <div className="avatar-wrap">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            className="avatar"
-            src={profile.avatar || "/avatar.jpg"}
-            alt={profile.name || "Avatar"}
-            width="340"
-            height="340"
-            loading="eager"
-            decoding="async"
-          />
-        </div>
+        {profile.avatar && (
+          <div className="avatar-wrap">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              className="avatar"
+              src={profile.avatar}
+              alt={profile.name || "Avatar"}
+              width="340"
+              height="340"
+              loading="eager"
+              decoding="async"
+            />
+          </div>
+        )}
       </section>
 
       {skills.length > 0 && (

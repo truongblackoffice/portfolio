@@ -18,7 +18,7 @@ export default function AdminProfileVisual() {
       name: data.name || "",
       title: data.title || "",
       bio: data.bio || "",
-      avatar: data.avatar || "/avatar.jpg",
+      avatar: data.avatar || "",
       skills: data.skills || [],
       experience: data.experience || [],
       socials: {
@@ -146,20 +146,39 @@ export default function AdminProfileVisual() {
 
         {/* Avatar Box */}
         <div className="glass" style={{ padding: 16, textAlign: "center", borderRadius: 14 }}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={f.avatar || "/avatar.jpg"}
-            alt="Avatar"
-            style={{ width: 120, height: 120, borderRadius: "50%", objectFit: "cover", margin: "0 auto 10px", border: "2px solid var(--primary)" }}
-          />
+          {f.avatar ? (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img
+              src={f.avatar}
+              alt="Avatar"
+              style={{ width: 120, height: 120, borderRadius: "50%", objectFit: "cover", margin: "0 auto 10px", border: "2px solid var(--primary)" }}
+            />
+          ) : (
+            <div style={{ width: 120, height: 120, borderRadius: "50%", margin: "0 auto 10px", border: "2px dashed var(--glass-border)", display: "grid", placeItems: "center", color: "var(--muted)", fontSize: ".8rem" }}>
+              Chưa có ảnh
+            </div>
+          )}
           <div className="field" style={{ marginBottom: 8 }}>
             <label style={{ fontSize: ".75rem" }}>URL Ảnh đại diện</label>
             <input value={f.avatar} onChange={set("avatar")} placeholder="https://..." style={{ fontSize: ".8rem", padding: "6px 8px" }} />
           </div>
-          <label className="btn btn-ghost btn-sm" style={{ cursor: "pointer", width: "100%", justifyContent: "center" }}>
-            Tải ảnh lên
-            <input type="file" accept="image/*" style={{ display: "none" }} onChange={handleAvatarUpload} />
-          </label>
+          <div style={{ display: "flex", gap: 6, justifyContent: "center" }}>
+            <label className="btn btn-ghost btn-sm" style={{ cursor: "pointer", flex: 1, justifyContent: "center" }}>
+              Tải ảnh lên
+              <input type="file" accept="image/*" style={{ display: "none" }} onChange={handleAvatarUpload} />
+            </label>
+            {f.avatar && (
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                onClick={() => { setOk(false); setF({ ...f, avatar: "" }); }}
+                style={{ color: "var(--danger)" }}
+                title="Xóa ảnh đại diện"
+              >
+                Xóa
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
