@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { saveItem, getProfile } from "@/lib/db";
 import { seedProfile, defaultContactConfig } from "@/lib/seed";
+import { renderIcon } from "@/lib/presets";
 import useAsync from "@/lib/useAsync";
 import { toast } from "@/lib/toast";
 
@@ -102,7 +103,7 @@ export default function Contact() {
                     borderColor: "hsla(262 90% 68% / .4)",
                   }}
                 >
-                  {ch.icon || "💬"}
+                  {renderIcon(ch.icon, "💬", { width: 28, height: 28 })}
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: ".8rem", color: "var(--muted)", fontWeight: 500 }}>

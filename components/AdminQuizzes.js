@@ -216,7 +216,9 @@ export default function AdminQuizzes() {
                     color: "var(--text)", textAlign: "left",
                   }}
                 >
-                  <span style={{ fontSize: "1.3rem", lineHeight: 1 }}>{it.icon}</span>
+                  <span style={{ fontSize: "1.3rem", lineHeight: 1, display: "inline-flex", alignItems: "center", justifyContent: "center", width: 22, height: 22, flexShrink: 0 }}>
+                    {renderIcon(it.icon, "📁", { width: 20, height: 20 })}
+                  </span>
                   <span style={{ fontSize: ".78rem", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{it.label}</span>
                 </button>
               ))}

@@ -6,14 +6,78 @@ import { ALL_ICON_TOPICS, renderIcon, isImageIcon } from "@/lib/presets";
 import { toast } from "@/lib/toast";
 
 const CHANNEL_PRESETS = [
-  { title: "Email Quản trị", value: "your-email@gmail.com", icon: "✉️", link: "mailto:your-email@gmail.com", type: "email", subtitle: "Gửi thư điện tử trực tiếp", allowCopy: true },
-  { title: "Zalo & Chat nhanh", value: "0987654321", icon: "💬", link: "https://zalo.me/0987654321", type: "phone", subtitle: "Nhắn tin Zalo nhanh", allowCopy: true },
-  { title: "Kênh Telegram", value: "@username", icon: "✈️", link: "https://t.me/username", type: "link", subtitle: "Trao đổi qua Telegram", allowCopy: false },
-  { title: "Số điện thoại / Hotline", value: "0987 654 321", icon: "📱", link: "tel:0987654321", type: "phone", subtitle: "Gọi điện thoại trực tiếp", allowCopy: true },
-  { title: "GitHub Profile", value: "username", icon: "🐙", link: "https://github.com/username", type: "link", subtitle: "Khám phá kho mã nguồn mở", allowCopy: false },
-  { title: "Facebook / Messenger", value: "Trang cá nhân", icon: "📘", link: "https://facebook.com/username", type: "link", subtitle: "Nhắn tin Facebook trực tiếp", allowCopy: false },
-  { title: "LinkedIn Profile", value: "Hồ sơ chuyên nghiệp", icon: "💼", link: "https://linkedin.com/in/username", type: "link", subtitle: "Kết nối mạng lưới công việc", allowCopy: false },
-  { title: "Discord Server", value: "username#1234", icon: "🎮", link: "https://discord.gg/...", type: "link", subtitle: "Tham gia máy chủ Discord", allowCopy: true },
+  {
+    title: "Email Quản trị",
+    value: "your-email@gmail.com",
+    icon: "https://api.iconify.design/lucide/mail.svg?color=%238b5cf6",
+    link: "mailto:your-email@gmail.com",
+    type: "email",
+    subtitle: "Gửi thư điện tử trực tiếp",
+    allowCopy: true,
+  },
+  {
+    title: "Zalo & Chat nhanh",
+    value: "0987654321",
+    icon: "https://api.iconify.design/simple-icons/zalo.svg?color=%230068ff",
+    link: "https://zalo.me/0987654321",
+    type: "phone",
+    subtitle: "Nhắn tin Zalo nhanh",
+    allowCopy: true,
+  },
+  {
+    title: "Kênh Telegram",
+    value: "@username",
+    icon: "https://api.iconify.design/simple-icons/telegram.svg?color=%2326a5e4",
+    link: "https://t.me/username",
+    type: "link",
+    subtitle: "Trao đổi qua Telegram",
+    allowCopy: false,
+  },
+  {
+    title: "Số điện thoại / Hotline",
+    value: "0987 654 321",
+    icon: "https://api.iconify.design/lucide/phone-call.svg?color=%2310b981",
+    link: "tel:0987654321",
+    type: "phone",
+    subtitle: "Gọi điện thoại trực tiếp",
+    allowCopy: true,
+  },
+  {
+    title: "GitHub Profile",
+    value: "username",
+    icon: "https://api.iconify.design/simple-icons/github.svg?color=%23ffffff",
+    link: "https://github.com/username",
+    type: "link",
+    subtitle: "Khám phá kho mã nguồn mở",
+    allowCopy: false,
+  },
+  {
+    title: "Facebook / Messenger",
+    value: "Trang cá nhân",
+    icon: "https://api.iconify.design/simple-icons/facebook.svg?color=%231877f2",
+    link: "https://facebook.com/username",
+    type: "link",
+    subtitle: "Nhắn tin Facebook trực tiếp",
+    allowCopy: false,
+  },
+  {
+    title: "LinkedIn Profile",
+    value: "Hồ sơ chuyên nghiệp",
+    icon: "https://api.iconify.design/simple-icons/linkedin.svg?color=%230a66c2",
+    link: "https://linkedin.com/in/username",
+    type: "link",
+    subtitle: "Kết nối mạng lưới công việc",
+    allowCopy: false,
+  },
+  {
+    title: "Discord Server",
+    value: "username#1234",
+    icon: "https://api.iconify.design/simple-icons/discord.svg?color=%235865f2",
+    link: "https://discord.gg/...",
+    type: "link",
+    subtitle: "Tham gia máy chủ Discord",
+    allowCopy: true,
+  },
 ];
 
 export default function AdminContact() {
@@ -41,6 +105,10 @@ export default function AdminContact() {
   const [activeIconGroup, setActiveIconGroup] = useState("contact");
   const [iconSearch, setIconSearch] = useState("");
   const [showIconPicker, setShowIconPicker] = useState(false);
+  const [pickerTab, setPickerTab] = useState("topics"); // "topics" | "search_cdn" | "custom_url"
+  const [cdnQuery, setCdnQuery] = useState("");
+  const [cdnSearchResults, setCdnSearchResults] = useState([]);
+  const [searchingCdn, setSearchingCdn] = useState(false);
 
   // Modal / Form state for FAQ
   const [editingFaq, setEditingFaq] = useState(null);
@@ -85,6 +153,33 @@ export default function AdminContact() {
     }
   };
 
+  // Tìm kiếm icon trực tuyến từ kho Iconify CDN
+  const handleSearchCdn = async (q) => {
+    const query = (q !== undefined ? q : cdnQuery).trim();
+    if (!query) return;
+    setSearchingCdn(true);
+    try {
+      const res = await fetch(`https://api.iconify.design/search?query=${encodeURIComponent(query)}&limit=36`);
+      const data = await res.json();
+      if (data?.icons && data.icons.length > 0) {
+        setCdnSearchResults(
+          data.icons.map((name) => ({
+            name,
+            url: `https://api.iconify.design/${name.replace(":", "/")}.svg`,
+          }))
+        );
+      } else {
+        setCdnSearchResults([]);
+        toast.info(`Không tìm thấy icon nào với từ khóa "${query}"`);
+      }
+    } catch (err) {
+      console.error("Lỗi tìm kiếm CDN:", err);
+      toast.error("Không thể kết nối kho Icon CDN: " + err.message);
+    } finally {
+      setSearchingCdn(false);
+    }
+  };
+
   // Upload custom icon image
   const handleIconUpload = async (e) => {
     const file = e.target.files?.[0];
@@ -110,6 +205,8 @@ export default function AdminContact() {
     setEditingChannel(null);
     setShowIconPicker(false);
     setIconSearch("");
+    setCdnSearchResults([]);
+    setPickerTab("topics");
     if (preset) {
       setChannelForm({
         ...preset,
@@ -119,7 +216,7 @@ export default function AdminContact() {
       setChannelForm({
         title: "",
         value: "",
-        icon: "💬",
+        icon: "https://api.iconify.design/lucide/message-square.svg?color=%2306b6d4",
         link: "",
         type: "link",
         subtitle: "",
@@ -134,6 +231,8 @@ export default function AdminContact() {
     setEditingChannel(ch);
     setShowIconPicker(false);
     setIconSearch("");
+    setCdnSearchResults([]);
+    setPickerTab("topics");
     setChannelForm({ ...ch });
     setShowChannelModal(true);
   };
@@ -354,8 +453,9 @@ export default function AdminContact() {
                 className="chip"
                 onClick={() => openAddChannel(pr)}
                 title="Bấm để thêm kênh này"
+                style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
               >
-                {pr.icon} {pr.title}
+                {renderIcon(pr.icon, "📁", { width: 16, height: 16 })} {pr.title}
               </button>
             ))}
           </div>
@@ -411,7 +511,7 @@ export default function AdminContact() {
                     )}
                     {isImageIcon(ch.icon) && (
                       <span style={{ fontSize: ".7rem", padding: "1px 8px", borderRadius: 999, background: "hsla(262 90% 68% / .15)", color: "var(--primary)" }}>
-                        Ảnh tải lên
+                        Vector CDN / SVG
                       </span>
                     )}
                   </div>
@@ -582,10 +682,15 @@ export default function AdminContact() {
             </div>
 
             <form onSubmit={saveChannelForm}>
-              {/* Icon Section (Preview + Upload + Picker Button) */}
+              {/* Icon Section (Preview + CDN Selection + Search + Upload) */}
               <div style={{ marginBottom: 18, padding: 16, borderRadius: 14, background: "hsla(0 0% 100% / .04)", border: "1px solid var(--glass-border)" }}>
-                <div style={{ fontSize: ".82rem", fontWeight: 600, color: "var(--muted)", marginBottom: 10 }}>
-                  BIỂU TƯỢNG (ICON / LOGO)
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                  <div style={{ fontSize: ".82rem", fontWeight: 600, color: "var(--muted)" }}>
+                    BIỂU TƯỢNG (ICON CDN VECTOR SVG / LOGO)
+                  </div>
+                  <span style={{ fontSize: ".72rem", color: "var(--accent)" }}>
+                    {isImageIcon(channelForm.icon) ? "Vector CDN SVG" : "Ký tự / Emoji"}
+                  </span>
                 </div>
 
                 <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
@@ -599,161 +704,305 @@ export default function AdminContact() {
                       border: "2px solid var(--primary)",
                       display: "grid",
                       placeItems: "center",
-                      fontSize: "2rem",
                       overflow: "hidden",
-                      padding: isImageIcon(channelForm.icon) ? 8 : 0,
+                      padding: 10,
                       flexShrink: 0,
                     }}
-                    title="Icon hiện tại của kênh"
+                    title="Icon CDN hiện tại của kênh"
                   >
-                    {renderIcon(channelForm.icon, "💬")}
+                    {renderIcon(channelForm.icon, "💬", { width: 34, height: 34 })}
                   </div>
 
                   <div style={{ display: "flex", flexDirection: "column", gap: 8, flex: 1, minWidth: 200 }}>
                     <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                      {/* Button Open Topic Icon Picker */}
                       <button
                         type="button"
-                        className="btn btn-ghost btn-sm"
+                        className="btn btn-primary btn-sm"
                         onClick={() => setShowIconPicker(!showIconPicker)}
                         style={{ fontSize: ".8rem" }}
                       >
-                        {showIconPicker ? "▲ Đóng bộ chọn icon" : "🎨 Chọn icon theo chủ đề (200+ icon)"}
+                        {showIconPicker ? "▲ Thu gọn bộ chọn icon" : "🌐 Mở kho Icon CDN Vector SVG (200k+ icon)"}
                       </button>
 
-                      {/* Button Upload Image Icon */}
-                      <label
-                        className="btn btn-primary btn-sm"
-                        style={{ cursor: uploadingIcon ? "wait" : "pointer", fontSize: ".8rem" }}
-                      >
-                        {uploadingIcon ? (
-                          <>
-                            <span className="spinner" style={{ width: 14, height: 14 }} />
-                            Đang tải ảnh...
-                          </>
-                        ) : (
-                          "📁 Tải ảnh logo từ máy"
-                        )}
-                        <input
-                          type="file"
-                          accept="image/*"
-                          style={{ display: "none" }}
-                          disabled={uploadingIcon}
-                          onChange={handleIconUpload}
-                        />
-                      </label>
+                      {isImageIcon(channelForm.icon) && (
+                        <button
+                          type="button"
+                          className="btn btn-ghost btn-sm"
+                          onClick={() => setChannelForm({ ...channelForm, icon: "https://api.iconify.design/lucide/message-square.svg?color=%2306b6d4" })}
+                          style={{ fontSize: ".75rem", padding: "6px 10px", color: "var(--danger)" }}
+                          title="Đặt lại icon mặc định"
+                        >
+                          Đặt lại mặc định
+                        </button>
+                      )}
                     </div>
 
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                       <input
                         value={channelForm.icon}
                         onChange={(e) => setChannelForm({ ...channelForm, icon: e.target.value })}
-                        placeholder="Nhập emoji hoặc link ảnh..."
+                        placeholder="Dán link SVG CDN (https://api.iconify.design/... hoặc https://...)"
                         style={{ fontSize: ".8rem", padding: "6px 10px" }}
                       />
-                      {isImageIcon(channelForm.icon) && (
-                        <button
-                          type="button"
-                          className="btn btn-ghost btn-sm"
-                          onClick={() => setChannelForm({ ...channelForm, icon: "💬" })}
-                          style={{ fontSize: ".75rem", padding: "6px 10px", color: "var(--danger)" }}
-                          title="Chuyển về emoji mặc định"
-                        >
-                          Xóa ảnh
-                        </button>
-                      )}
                     </div>
                   </div>
                 </div>
 
-                {/* EXPANDABLE TOPIC ICON PICKER */}
+                {/* EXPANDABLE CDN ICON PICKER */}
                 {showIconPicker && (
                   <div
                     style={{
                       marginTop: 16,
-                      padding: 14,
+                      padding: 16,
                       borderRadius: 14,
-                      background: "hsla(0 0% 0% / .25)",
+                      background: "hsla(0 0% 0% / .3)",
                       border: "1px solid var(--glass-border)",
                     }}
                   >
-                    {/* Topic Tabs */}
-                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
-                      {ALL_ICON_TOPICS.map((topic) => (
-                        <button
-                          key={topic.id}
-                          type="button"
-                          onClick={() => setActiveIconGroup(topic.id)}
-                          style={{
-                            padding: "6px 12px",
-                            borderRadius: 999,
-                            fontSize: ".78rem",
-                            border: "1px solid var(--glass-border)",
-                            background: activeIconGroup === topic.id ? "var(--grad)" : "hsla(0 0% 100% / .06)",
-                            color: activeIconGroup === topic.id ? "#fff" : "var(--text)",
-                            cursor: "pointer",
-                            fontWeight: activeIconGroup === topic.id ? 700 : 500,
-                            transition: ".2s",
-                          }}
-                        >
-                          {topic.name} ({topic.icons.length})
-                        </button>
-                      ))}
+                    {/* Picker Sub-tabs */}
+                    <div style={{ display: "flex", gap: 8, borderBottom: "1px solid var(--glass-border)", paddingBottom: 10, marginBottom: 14, flexWrap: "wrap" }}>
+                      <button
+                        type="button"
+                        className={`chip ${pickerTab === "topics" ? "on" : ""}`}
+                        onClick={() => setPickerTab("topics")}
+                        style={{ fontSize: ".8rem", padding: "6px 14px" }}
+                      >
+                        ⚡ 6 Chủ đề CDN Tuyển chọn (216+ Icon)
+                      </button>
+                      <button
+                        type="button"
+                        className={`chip ${pickerTab === "search_cdn" ? "on" : ""}`}
+                        onClick={() => setPickerTab("search_cdn")}
+                        style={{ fontSize: ".8rem", padding: "6px 14px" }}
+                      >
+                        🔍 Tìm kiếm CDN Toàn cầu (Iconify)
+                      </button>
+                      <button
+                        type="button"
+                        className={`chip ${pickerTab === "custom_url" ? "on" : ""}`}
+                        onClick={() => setPickerTab("custom_url")}
+                        style={{ fontSize: ".8rem", padding: "6px 14px" }}
+                      >
+                        📁 Tải ảnh riêng từ máy
+                      </button>
                     </div>
 
-                    {/* Search inside Topic */}
-                    <div style={{ marginBottom: 10 }}>
-                      <input
-                        value={iconSearch}
-                        onChange={(e) => setIconSearch(e.target.value)}
-                        placeholder={`🔍 Tìm icon trong nhóm "${currentGroupObj.name}"...`}
-                        style={{ fontSize: ".8rem", padding: "6px 12px" }}
-                      />
-                    </div>
-
-                    {/* Icons Grid (>= 30 icons per topic) */}
-                    <div
-                      style={{
-                        display: "grid",
-                        gridTemplateColumns: "repeat(auto-fill, minmax(42px, 1fr))",
-                        gap: 6,
-                        maxHeight: 180,
-                        overflowY: "auto",
-                        padding: 4,
-                      }}
-                    >
-                      {filteredIcons.map((item, idx) => (
-                        <button
-                          key={idx}
-                          type="button"
-                          onClick={() => {
-                            setChannelForm({ ...channelForm, icon: item.icon });
-                            toast.success(`Đã chọn icon: ${item.icon} (${item.label})`);
-                          }}
-                          style={{
-                            width: "100%",
-                            aspectRatio: "1",
-                            fontSize: "1.4rem",
-                            display: "grid",
-                            placeItems: "center",
-                            background: channelForm.icon === item.icon ? "hsla(262 90% 68% / .3)" : "hsla(0 0% 100% / .06)",
-                            border: channelForm.icon === item.icon ? "2px solid var(--primary)" : "1px solid var(--glass-border)",
-                            borderRadius: 10,
-                            cursor: "pointer",
-                            transition: ".15s",
-                          }}
-                          title={item.label}
-                        >
-                          {item.icon}
-                        </button>
-                      ))}
-
-                      {filteredIcons.length === 0 && (
-                        <div style={{ gridColumn: "1 / -1", textAlign: "center", padding: 14, color: "var(--muted)", fontSize: ".82rem" }}>
-                          Không tìm thấy icon phù hợp với &quot;{iconSearch}&quot;
+                    {/* TAB 1: CURATED TOPICS (6 TOPICS × 36 ICONS) */}
+                    {pickerTab === "topics" && (
+                      <div>
+                        {/* Topic Tabs */}
+                        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
+                          {ALL_ICON_TOPICS.map((topic) => (
+                            <button
+                              key={topic.id}
+                              type="button"
+                              onClick={() => setActiveIconGroup(topic.id)}
+                              style={{
+                                padding: "6px 12px",
+                                borderRadius: 999,
+                                fontSize: ".76rem",
+                                border: "1px solid var(--glass-border)",
+                                background: activeIconGroup === topic.id ? "var(--grad)" : "hsla(0 0% 100% / .06)",
+                                color: activeIconGroup === topic.id ? "#fff" : "var(--text)",
+                                cursor: "pointer",
+                                fontWeight: activeIconGroup === topic.id ? 700 : 500,
+                                transition: ".2s",
+                              }}
+                            >
+                              {topic.name} ({topic.icons.length})
+                            </button>
+                          ))}
                         </div>
-                      )}
-                    </div>
+
+                        {/* Search inside Topic */}
+                        <div style={{ marginBottom: 12 }}>
+                          <input
+                            value={iconSearch}
+                            onChange={(e) => setIconSearch(e.target.value)}
+                            placeholder={`🔍 Lọc trong chủ đề "${currentGroupObj.name}"...`}
+                            style={{ fontSize: ".8rem", padding: "6px 12px" }}
+                          />
+                        </div>
+
+                        {/* Icons Grid */}
+                        <div
+                          style={{
+                            display: "grid",
+                            gridTemplateColumns: "repeat(auto-fill, minmax(46px, 1fr))",
+                            gap: 6,
+                            maxHeight: 200,
+                            overflowY: "auto",
+                            padding: 4,
+                          }}
+                        >
+                          {filteredIcons.map((item, idx) => {
+                            const isSelected = channelForm.icon === item.icon;
+                            return (
+                              <button
+                                key={idx}
+                                type="button"
+                                onClick={() => {
+                                  setChannelForm({ ...channelForm, icon: item.icon });
+                                  toast.success(`Đã chọn icon CDN: ${item.label}`);
+                                }}
+                                style={{
+                                  width: "100%",
+                                  aspectRatio: "1",
+                                  display: "grid",
+                                  placeItems: "center",
+                                  background: isSelected ? "hsla(262 90% 68% / .3)" : "hsla(0 0% 100% / .06)",
+                                  border: isSelected ? "2px solid var(--primary)" : "1px solid var(--glass-border)",
+                                  borderRadius: 10,
+                                  cursor: "pointer",
+                                  padding: 8,
+                                  transition: ".15s",
+                                }}
+                                title={item.label}
+                              >
+                                {renderIcon(item.icon, "📁", { width: 24, height: 24 })}
+                              </button>
+                            );
+                          })}
+
+                          {filteredIcons.length === 0 && (
+                            <div style={{ gridColumn: "1 / -1", textAlign: "center", padding: 14, color: "var(--muted)", fontSize: ".82rem" }}>
+                              Không tìm thấy icon CDN nào phù hợp với &quot;{iconSearch}&quot;
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* TAB 2: GLOBAL ICONIFY SEARCH */}
+                    {pickerTab === "search_cdn" && (
+                      <div>
+                        <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+                          <input
+                            value={cdnQuery}
+                            onChange={(e) => setCdnQuery(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                handleSearchCdn(cdnQuery);
+                              }
+                            }}
+                            placeholder="Nhập tên tiếng Anh (ví dụ: mail, phone, zalo, facebook, github, server, code, star...)"
+                            style={{ fontSize: ".8rem", padding: "8px 12px" }}
+                          />
+                          <button
+                            type="button"
+                            className="btn btn-primary btn-sm"
+                            onClick={() => handleSearchCdn(cdnQuery)}
+                            disabled={searchingCdn || !cdnQuery.trim()}
+                            style={{ flexShrink: 0, fontSize: ".8rem" }}
+                          >
+                            {searchingCdn ? "Đang tìm..." : "🔍 Tìm kiếm"}
+                          </button>
+                        </div>
+
+                        {/* Keyword suggestions */}
+                        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
+                          <span className="muted" style={{ fontSize: ".74rem", alignSelf: "center" }}>Gợi ý:</span>
+                          {["mail", "phone", "zalo", "telegram", "facebook", "github", "discord", "linkedin", "code", "cloud", "server", "lock", "chat", "star", "youtube", "tiktok"].map((kw) => (
+                            <button
+                              key={kw}
+                              type="button"
+                              className="chip"
+                              onClick={() => {
+                                setCdnQuery(kw);
+                                handleSearchCdn(kw);
+                              }}
+                              style={{ fontSize: ".72rem", padding: "3px 8px" }}
+                            >
+                              {kw}
+                            </button>
+                          ))}
+                        </div>
+
+                        {/* Search Results Grid */}
+                        <div
+                          style={{
+                            display: "grid",
+                            gridTemplateColumns: "repeat(auto-fill, minmax(46px, 1fr))",
+                            gap: 6,
+                            maxHeight: 200,
+                            overflowY: "auto",
+                            padding: 4,
+                          }}
+                        >
+                          {cdnSearchResults.map((res, idx) => {
+                            const isSelected = channelForm.icon === res.url;
+                            return (
+                              <button
+                                key={idx}
+                                type="button"
+                                onClick={() => {
+                                  setChannelForm({ ...channelForm, icon: res.url });
+                                  toast.success(`Đã chọn icon CDN: ${res.name}`);
+                                }}
+                                style={{
+                                  width: "100%",
+                                  aspectRatio: "1",
+                                  display: "grid",
+                                  placeItems: "center",
+                                  background: isSelected ? "hsla(262 90% 68% / .3)" : "hsla(0 0% 100% / .06)",
+                                  border: isSelected ? "2px solid var(--primary)" : "1px solid var(--glass-border)",
+                                  borderRadius: 10,
+                                  cursor: "pointer",
+                                  padding: 8,
+                                  transition: ".15s",
+                                }}
+                                title={res.name}
+                              >
+                                {renderIcon(res.url, "📁", { width: 24, height: 24 })}
+                              </button>
+                            );
+                          })}
+
+                          {cdnSearchResults.length === 0 && !searchingCdn && (
+                            <div style={{ gridColumn: "1 / -1", textAlign: "center", padding: 20, color: "var(--muted)", fontSize: ".82rem" }}>
+                              Nhập từ khóa tiếng Anh ở trên và bấm &quot;Tìm kiếm&quot; hoặc chọn các gợi ý có sẵn để tra cứu hơn 200,000+ vector SVG icons từ CDN toàn cầu.
+                            </div>
+                          )}
+
+                          {searchingCdn && (
+                            <div style={{ gridColumn: "1 / -1", textAlign: "center", padding: 20, color: "var(--accent)", fontSize: ".82rem" }}>
+                              <span className="spinner" style={{ width: 16, height: 16, display: "inline-block", verticalAlign: "middle", marginRight: 8 }} />
+                              Đang tải dữ liệu từ Icon CDN toàn cầu...
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* TAB 3: CUSTOM UPLOAD */}
+                    {pickerTab === "custom_url" && (
+                      <div style={{ padding: "10px 0" }}>
+                        <p className="muted" style={{ fontSize: ".82rem", marginBottom: 12 }}>
+                          Nếu bạn có tệp logo thương hiệu riêng (PNG, SVG, JPG, WEBP), bạn có thể tải trực tiếp từ máy tính lên hệ thống:
+                        </p>
+                        <label
+                          className="btn btn-primary btn-sm"
+                          style={{ cursor: uploadingIcon ? "wait" : "pointer", fontSize: ".82rem", display: "inline-flex", alignItems: "center", gap: 8 }}
+                        >
+                          {uploadingIcon ? (
+                            <>
+                              <span className="spinner" style={{ width: 14, height: 14 }} />
+                              Đang tải ảnh lên máy chủ...
+                            </>
+                          ) : (
+                            "📁 Tải ảnh logo từ máy tính"
+                          )}
+                          <input
+                            type="file"
+                            accept="image/*"
+                            style={{ display: "none" }}
+                            disabled={uploadingIcon}
+                            onChange={handleIconUpload}
+                          />
+                        </label>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
