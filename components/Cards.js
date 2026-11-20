@@ -156,6 +156,7 @@ export function Filters({ items, query, setQuery, cat, setCat, tag, setTag }) {
             { value: "", label: "Tất cả danh mục", icon: "🌐" },
             ...cats.map((c) => ({ value: c, label: c, icon: "📁" })),
           ]}
+          className="mobile-w-full"
           style={{ minWidth: 200, maxWidth: 260 }}
         />
       </div>

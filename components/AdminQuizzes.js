@@ -275,7 +275,7 @@ export default function AdminQuizzes() {
 
                 <div style={{
                   display: "grid",
-                  gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))",
+                  gridTemplateColumns: "repeat(auto-fill, minmax(105px, 1fr))",
                   gap: 8,
                   maxHeight: 220,
                   overflowY: "auto",
@@ -465,15 +465,15 @@ export default function AdminQuizzes() {
       <div style={{ display: "grid", gap: 10, marginBottom: 30 }}>
         {topics.map((c) => (
           <div className="row glass" key={c.id} style={{ margin: 0 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0, flex: 1 }}>
               <span style={{
                 fontSize: "1.5rem", width: 42, height: 42, display: "grid", placeItems: "center",
                 background: `${c.color}22`, borderRadius: 10, border: `1px solid ${c.color}66`,
-                overflow: "hidden", padding: isImageIcon(c.icon) ? 4 : 0,
+                overflow: "hidden", padding: isImageIcon(c.icon) ? 4 : 0, flexShrink: 0,
               }}>{renderIcon(c.icon, "🧠")}</span>
-              <div>
-                <b style={{ color: c.color }}>{c.name}</b>
-                <div className="muted" style={{ fontSize: ".8rem" }}>
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <b style={{ color: c.color, wordBreak: "break-word" }}>{c.name}</b>
+                <div className="muted" style={{ fontSize: ".8rem", wordBreak: "break-word" }}>
                   {countIn(c.id)} bộ đề · thứ tự {c.order ?? 0}{c.desc ? ` · ${c.desc}` : ""}
                 </div>
               </div>
@@ -499,11 +499,11 @@ export default function AdminQuizzes() {
       </div>
       {quizzes.map((q) => (
         <div className="row glass" key={q.id}>
-          <div>
-            <b>{q.title}</b>{" "}
-            <span className={`badge ${q.published ? "" : "draft"}`}>{q.published ? "Đã đăng" : "Nháp"}</span>{" "}
-            {q.membersOnly && <span className="badge draft">🔒 Chỉ thành viên</span>}
-            <div className="muted" style={{ fontSize: ".8rem" }}>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <b style={{ wordBreak: "break-word" }}>{q.title}</b>{" "}
+            <span className={`badge ${q.published ? "" : "draft"}`} style={{ whiteSpace: "nowrap" }}>{q.published ? "Đã đăng" : "Nháp"}</span>{" "}
+            {q.membersOnly && <span className="badge draft" style={{ whiteSpace: "nowrap" }}>🔒 Chỉ thành viên</span>}
+            <div className="muted" style={{ fontSize: ".8rem", wordBreak: "break-word" }}>
               {topicName(q.topicId)} · {q.questions?.length || 0} câu
               {q.timeLimitMin > 0 ? ` · ${q.timeLimitMin} phút` : ""} · {fmtDate(q.createdAt)}
             </div>

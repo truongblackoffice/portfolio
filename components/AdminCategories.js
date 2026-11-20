@@ -417,7 +417,7 @@ export default function AdminCategories() {
 
                 <div style={{
                   display: "grid",
-                  gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))",
+                  gridTemplateColumns: "repeat(auto-fill, minmax(105px, 1fr))",
                   gap: 8,
                   maxHeight: 220,
                   overflowY: "auto",
@@ -615,30 +615,30 @@ export default function AdminCategories() {
                 transition: ".3s",
               }}
             >
-              <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 14, minWidth: 0, flex: 1 }}>
                 <span style={{
                   fontSize: "1.6rem", width: 44, height: 44, display: "grid", placeItems: "center",
                   background: `${c.color || "var(--primary)"}22`, borderRadius: 10, border: `1px solid ${c.color || "var(--primary)"}66`,
-                  overflow: "hidden", padding: isImageIcon(c.icon) ? 4 : 0,
+                  overflow: "hidden", padding: isImageIcon(c.icon) ? 4 : 0, flexShrink: 0,
                 }}>
                   {renderIcon(c.icon, "📁")}
                 </span>
-                <div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <b style={{ fontSize: "1.05rem", color: c.color }}>{c.name}</b>
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                    <b style={{ fontSize: "1.05rem", color: c.color, wordBreak: "break-word" }}>{c.name}</b>
                     {isSelected && (
-                      <span className="badge" style={{ background: "hsla(160 84% 39% / .2)", color: "#10b981", fontSize: ".72rem", border: "1px solid hsla(160 84% 39% / .4)" }}>
+                      <span className="badge" style={{ background: "hsla(160 84% 39% / .2)", color: "#10b981", fontSize: ".72rem", border: "1px solid hsla(160 84% 39% / .4)", whiteSpace: "nowrap" }}>
                         Đang chọn sửa
                       </span>
                     )}
                   </div>
-                  {c.desc && <p className="muted" style={{ fontSize: ".82rem", margin: "2px 0" }}>{c.desc}</p>}
+                  {c.desc && <p className="muted" style={{ fontSize: ".82rem", margin: "2px 0", wordBreak: "break-word" }}>{c.desc}</p>}
                   <div className="muted" style={{ fontSize: ".78rem" }}>
                     {c.postCount} bài viết · {c.docCount} tài liệu
                   </div>
                 </div>
               </div>
-              <div className="actions" style={{ display: "flex", gap: 8 }}>
+              <div className="actions">
                 <button
                   type="button"
                   className={`btn btn-sm ${isSelected ? "btn-primary" : "btn-ghost"}`}

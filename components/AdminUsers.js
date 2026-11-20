@@ -165,9 +165,9 @@ export default function Users() {
                 background: isSuper ? "hsla(262 90% 68% / .06)" : undefined,
               }}
             >
-              <div style={{ minWidth: 260, flex: 1 }}>
+              <div style={{ minWidth: 0, flex: 1 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                  <b style={{ fontSize: "1.05rem" }}>{u.displayName || "(chưa đặt tên)"}</b>
+                  <b style={{ fontSize: "1.05rem", wordBreak: "break-word" }}>{u.displayName || "(chưa đặt tên)"}</b>
                   {isSuper ? (
                     <span className="badge" style={{ background: "var(--grad)", color: "#fff", fontWeight: 600 }}>
                       👑 Super Admin (Chủ sở hữu)

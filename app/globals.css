@@ -293,8 +293,24 @@ textarea { min-height: 120px; resize: vertical; }
 /* Dưới 1200px: chuyển sang menu ☰ để không bị xuống dòng */
 @media (max-width: 1200px) {
   .menu-btn { display: block; }
-  .nav-links { display: none; position: absolute; top: 64px; left: 0; right: 0; flex-direction: column; align-items: stretch; padding: 16px; background: hsla(240 30% 8% / .95); border: 1px solid var(--glass-border); border-radius: var(--radius); }
-  [data-theme="light"] .nav-links { background: hsla(220 25% 98% / .96); }
+  .nav-links {
+    display: none;
+    position: absolute;
+    top: 64px;
+    left: 0;
+    right: 0;
+    flex-direction: column;
+    align-items: stretch;
+    padding: 16px;
+    background: hsla(240 30% 8% / .96);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius);
+    box-shadow: 0 16px 40px hsla(0 0% 0% / .5);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    z-index: 100;
+  }
+  [data-theme="light"] .nav-links { background: hsla(220 25% 98% / .98); }
   .nav-links.open { display: flex; }
   .nav-links a { padding: 10px 14px; font-size: 1rem; }
 }
@@ -1195,6 +1211,192 @@ textarea { min-height: 120px; resize: vertical; }
   color: var(--muted);
   font-size: 0.92rem;
   line-height: 1.55;
+}
+
+/* ==========================================================================
+   MOBILE RESPONSIVE SYSTEM (Admin, Controls, Touch optimization)
+   ========================================================================== */
+.admin-item-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px 18px;
+  border-radius: 14px;
+  transition: all 0.2s ease;
+}
+
+.admin-item-content {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+  flex: 1;
+}
+
+.admin-item-body {
+  min-width: 0;
+  flex: 1;
+}
+
+.admin-item-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.admin-item-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.mobile-w-full {
+  width: auto;
+}
+
+@media (max-width: 640px) {
+  /* Admin tabs ribbon: horizontal scroll */
+  .admin-tabs {
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-width: none !important;
+    padding-bottom: 6px;
+    margin-bottom: 20px;
+    gap: 8px;
+  }
+  .admin-tabs::-webkit-scrollbar {
+    display: none;
+  }
+  .admin-tabs a {
+    white-space: nowrap !important;
+    padding: 8px 14px !important;
+    font-size: 0.85rem !important;
+    flex-shrink: 0 !important;
+  }
+
+  /* Admin item cards stack vertically */
+  .admin-item-card {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 12px !important;
+    padding: 14px !important;
+  }
+
+  .admin-item-content {
+    align-items: flex-start !important;
+    gap: 12px !important;
+  }
+
+  .admin-item-actions {
+    display: flex !important;
+    width: 100% !important;
+    border-top: 1px solid var(--glass-border) !important;
+    padding-top: 10px !important;
+    margin-top: 4px !important;
+    gap: 8px !important;
+    justify-content: stretch !important;
+  }
+
+  .admin-item-actions button,
+  .admin-item-actions a {
+    flex: 1 !important;
+    display: inline-flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    min-height: 38px !important;
+    padding: 6px 10px !important;
+    font-size: 0.82rem !important;
+    text-align: center !important;
+  }
+
+  /* Generic .row stack vertically */
+  .row {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    padding: 14px !important;
+    gap: 12px !important;
+  }
+  .row .actions {
+    width: 100% !important;
+    border-top: 1px solid var(--glass-border) !important;
+    padding-top: 10px !important;
+    display: flex !important;
+    gap: 8px !important;
+  }
+  .row .actions button,
+  .row .actions a {
+    flex: 1 !important;
+    display: inline-flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    min-height: 38px !important;
+    text-align: center !important;
+  }
+
+  /* Toolbar search and selects */
+  .toolbar {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 10px !important;
+  }
+  .toolbar input,
+  .toolbar select,
+  .toolbar .custom-select-container,
+  .mobile-w-full {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  /* Section heads */
+  .section-head {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 14px !important;
+  }
+
+  /* Stats cards */
+  .stats {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 12px !important;
+  }
+  .stat {
+    padding: 16px 12px !important;
+  }
+  .stat b {
+    font-size: 1.8rem !important;
+  }
+
+  /* Grid layout */
+  .grid {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+
+  /* Modals on mobile */
+  .ai-modal-overlay {
+    padding: 8px !important;
+  }
+  .ai-modal-container {
+    width: 100% !important;
+    max-height: 92vh !important;
+    padding: 20px 16px !important;
+    border-radius: 16px !important;
+  }
+}
+
+@media (max-width: 440px) {
+  .stats {
+    grid-template-columns: 1fr !important;
+  }
+  .contact-method-card {
+    padding: 12px 14px !important;
+    gap: 12px !important;
+  }
 }
 
 

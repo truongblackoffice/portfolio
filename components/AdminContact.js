@@ -540,19 +540,13 @@ export default function AdminContact() {
           {(config.channels || []).map((ch) => (
             <div
               key={ch.id}
-              className="glass"
+              className="glass admin-item-card"
               style={{
-                padding: "14px 18px",
-                borderRadius: 14,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                gap: 14,
                 opacity: ch.enabled ? 1 : 0.55,
                 borderLeft: ch.enabled ? "4px solid var(--primary)" : "4px solid var(--glass-border)",
               }}
             >
-              <div style={{ display: "flex", alignItems: "center", gap: 14, minWidth: 0, flex: 1 }}>
+              <div className="admin-item-content">
                 <span
                   style={{
                     fontSize: "1.6rem",
@@ -570,37 +564,37 @@ export default function AdminContact() {
                 >
                   {renderIcon(ch.icon, "💬")}
                 </span>
-                <div style={{ minWidth: 0, flex: 1 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <b style={{ fontSize: ".95rem" }}>{ch.title}</b>
+                <div className="admin-item-body">
+                  <div className="admin-item-header">
+                    <b style={{ fontSize: ".95rem", wordBreak: "break-word" }}>{ch.title}</b>
                     {!ch.enabled && (
-                      <span style={{ fontSize: ".7rem", padding: "1px 8px", borderRadius: 999, background: "hsla(0 0% 100% / .1)", color: "var(--muted)" }}>
+                      <span style={{ fontSize: ".7rem", padding: "1px 8px", borderRadius: 999, background: "hsla(0 0% 100% / .1)", color: "var(--muted)", whiteSpace: "nowrap" }}>
                         Đang ẩn
                       </span>
                     )}
                     {ch.allowCopy && (
-                      <span style={{ fontSize: ".7rem", padding: "1px 8px", borderRadius: 999, background: "hsla(150 70% 50% / .15)", color: "hsl(150 70% 45%)" }}>
+                      <span style={{ fontSize: ".7rem", padding: "1px 8px", borderRadius: 999, background: "hsla(150 70% 50% / .15)", color: "hsl(150 70% 45%)", whiteSpace: "nowrap" }}>
                         Hỗ trợ chép nhanh
                       </span>
                     )}
                     {isImageIcon(ch.icon) && (
-                      <span style={{ fontSize: ".7rem", padding: "1px 8px", borderRadius: 999, background: "hsla(262 90% 68% / .15)", color: "var(--primary)" }}>
+                      <span style={{ fontSize: ".7rem", padding: "1px 8px", borderRadius: 999, background: "hsla(262 90% 68% / .15)", color: "var(--primary)", whiteSpace: "nowrap" }}>
                         Vector CDN / SVG
                       </span>
                     )}
                   </div>
-                  <div style={{ fontSize: ".82rem", color: "var(--accent)", marginTop: 2, wordBreak: "break-all" }}>
+                  <div style={{ fontSize: ".82rem", color: "var(--accent)", marginTop: 2, overflowWrap: "anywhere", wordBreak: "break-word" }}>
                     {ch.value || ch.link || "Chưa có liên kết"}
                   </div>
                   {ch.subtitle && (
-                    <div className="muted" style={{ fontSize: ".76rem", marginTop: 2 }}>
+                    <div className="muted" style={{ fontSize: ".76rem", marginTop: 2, wordBreak: "break-word" }}>
                       {ch.subtitle}
                     </div>
                   )}
                 </div>
               </div>
 
-              <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+              <div className="admin-item-actions">
                 <button
                   type="button"
                   className="btn btn-ghost btn-sm"
@@ -660,25 +654,17 @@ export default function AdminContact() {
           {(config.faqs || []).map((faq) => (
             <div
               key={faq.id}
-              className="glass"
-              style={{
-                padding: "16px 20px",
-                borderRadius: 14,
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "flex-start",
-                gap: 16,
-              }}
+              className="glass admin-item-card"
             >
-              <div style={{ flex: 1 }}>
-                <b style={{ color: "var(--accent)", fontSize: ".95rem", display: "block", marginBottom: 6 }}>
+              <div className="admin-item-body">
+                <b style={{ color: "var(--accent)", fontSize: ".95rem", display: "block", marginBottom: 6, wordBreak: "break-word" }}>
                   {faq.question}
                 </b>
-                <p className="muted" style={{ fontSize: ".88rem", lineHeight: 1.55 }}>
+                <p className="muted" style={{ fontSize: ".88rem", lineHeight: 1.55, wordBreak: "break-word" }}>
                   {faq.answer}
                 </p>
               </div>
-              <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+              <div className="admin-item-actions">
                 <button
                   type="button"
                   className="btn btn-ghost btn-sm"

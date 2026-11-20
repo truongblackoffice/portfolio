@@ -88,7 +88,7 @@ export default function Admin() {
           <h1 className="gradient-text">Trung tâm quản trị</h1>
           <p className="muted" style={{ fontSize: ".9rem" }}>Hệ thống quản lý nội dung, tài liệu, người dùng và tùy biến toàn diện</p>
         </div>
-        <button className="btn btn-ghost btn-sm" id="logout-btn" onClick={logout}>
+        <button className="btn btn-ghost btn-sm" id="logout-btn" onClick={logout} style={{ wordBreak: "break-word", textAlign: "left" }}>
           Đăng xuất ({user.email} · {ROLES[roleOf(user)]})
         </button>
       </div>
