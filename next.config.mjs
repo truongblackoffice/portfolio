@@ -1,5 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  experimental: {
+    agentUpgrade: "security",
+  },
   cacheComponents: true,
   partialPrefetching: true,
   images: {
