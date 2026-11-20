@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { fmtDate } from "@/lib/db";
 import { renderIcon } from "@/lib/presets";
+import CustomSelect from "@/components/CustomSelect";
 
 const OPTIMIZED_HOSTS = [
   "firebasestorage.googleapis.com",
@@ -143,12 +144,20 @@ export function Filters({ items, query, setQuery, cat, setCat, tag, setTag }) {
   const tags = [...new Set(items.flatMap((i) => i.tags || []))];
   return (
     <>
-      <div className="toolbar">
-        <input id="search-input" placeholder="🔍 Tìm kiếm..." value={query} onChange={(e) => setQuery(e.target.value)} />
-        <select id="category-select" value={cat} onChange={(e) => setCat(e.target.value)} style={{ maxWidth: 200 }}>
-          <option value="">Tất cả danh mục</option>
-          {cats.map((c) => <option key={c}>{c}</option>)}
-        </select>
+      <div className="toolbar" style={{ alignItems: "center" }}>
+        <input id="search-input" placeholder="🔍 Tìm kiếm bài viết, tài liệu..." value={query} onChange={(e) => setQuery(e.target.value)} />
+        <CustomSelect
+          id="category-select"
+          value={cat}
+          onChange={(val) => setCat(val)}
+          placeholder="Tất cả danh mục"
+          icon="📁"
+          options={[
+            { value: "", label: "Tất cả danh mục", icon: "🌐" },
+            ...cats.map((c) => ({ value: c, label: c, icon: "📁" })),
+          ]}
+          style={{ minWidth: 200, maxWidth: 260 }}
+        />
       </div>
       <div className="chips" style={{ marginBottom: 28 }}>
         {tags.map((t) => (

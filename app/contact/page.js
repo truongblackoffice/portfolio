@@ -3,6 +3,7 @@ import { useState } from "react";
 import { saveItem, getProfile } from "@/lib/db";
 import { seedProfile, defaultContactConfig } from "@/lib/seed";
 import { renderIcon } from "@/lib/presets";
+import CustomSelect from "@/components/CustomSelect";
 import useAsync from "@/lib/useAsync";
 import { toast } from "@/lib/toast";
 
@@ -421,14 +422,19 @@ export default function Contact() {
 
             <div className="field">
               <label htmlFor="c-subject">Chủ đề trao đổi</label>
-              <select id="c-subject" value={f.subject} onChange={set("subject")}>
-                <option value="Hỏi đáp & Trao đổi ôn thi">🧠 Hỏi đáp &amp; Trao đổi ôn thi trắc nghiệm</option>
-                <option value="Đóng góp câu hỏi & Tài liệu">📚 Đóng góp câu hỏi đề thi &amp; Chia sẻ tài liệu</option>
-                <option value="Góp ý bài viết blog công nghệ">✍️ Góp ý bài viết blog công nghệ</option>
-                <option value="Báo lỗi website hoặc tính năng AI">🐛 Báo lỗi hệ thống hoặc tính năng AI Quiz</option>
-                <option value="Đề xuất hợp tác dự án lập trình">🤝 Đề xuất hợp tác phát triển phần mềm / dự án</option>
-                <option value="Khác">💡 Chủ đề khác</option>
-              </select>
+              <CustomSelect
+                id="c-subject"
+                value={f.subject}
+                onChange={(val) => setF({ ...f, subject: val })}
+                options={[
+                  { value: "Hỏi đáp & Trao đổi ôn thi", label: "Hỏi đáp & Trao đổi ôn thi trắc nghiệm", icon: "🧠" },
+                  { value: "Đóng góp câu hỏi & Tài liệu", label: "Đóng góp câu hỏi đề thi & Chia sẻ tài liệu", icon: "📚" },
+                  { value: "Góp ý bài viết blog công nghệ", label: "Góp ý bài viết blog công nghệ", icon: "✍️" },
+                  { value: "Báo lỗi website hoặc tính năng AI", label: "Báo lỗi hệ thống hoặc tính năng AI Quiz", icon: "🐛" },
+                  { value: "Đề xuất hợp tác dự án lập trình", label: "Đề xuất hợp tác phát triển phần mềm / dự án", icon: "🤝" },
+                  { value: "Khác", label: "Chủ đề khác", icon: "💡" },
+                ]}
+              />
             </div>
 
             <div className="field">
